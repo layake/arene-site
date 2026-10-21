@@ -560,7 +560,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.162 · 21/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.167 · 21/10/2026</b></footer>
 
 <script>
 const G_SHEETS={
@@ -6787,16 +6787,19 @@ const h1=titleEl.querySelector(".tbox h1"); if(h1)h1.after(box); else titleEl.ap
 let n=0;
 const draw=()=>{ if(!n){box.hidden=true;return} const en=LANG==="en"; box.querySelector("span").innerHTML="<b>"+n+"</b> "+(en?(n>1?"players online":"player online"):(n>1?"joueurs en ligne":"joueur en ligne")); box.hidden=false };
 if(off)return;
-const sid=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>(b%36).toString(36)).join("");
+// identifiant aléatoire propre à l'onglet, gardé tant que l'onglet existe (un rechargement ne crée pas un « nouveau joueur ») ; jamais lié à un compte ni gardé après la fermeture de l'onglet
+let sid=""; try{sid=sessionStorage.getItem("aceSid")||""}catch(_){}
+if(!/^[a-z0-9]{10}$/.test(sid)){sid=Array.from(crypto.getRandomValues(new Uint8Array(10)),b=>(b%36).toString(36)).join(""); try{sessionStorage.setItem("aceSid",sid)}catch(_){}}
 const beat=async()=>{
   if(document.visibilityState!=="visible")return;
   const c=new AbortController(), to=setTimeout(()=>c.abort(),8000);
-  try{const r=await fetch(RANKED_API+"/api/online",{method:"POST",body:JSON.stringify({sid}),signal:c.signal}); const j=await r.json(); n=r.ok&&j&&j.online>0?j.online|0:0}
+  try{const r=await fetch(RANKED_API+"/api/online",{method:"POST",body:JSON.stringify({sid}),signal:c.signal}); if(r.status===429){draw();return} const j=await r.json(); n=r.ok&&j&&j.online>0?j.online|0:0}   // trop d'appels : on garde le dernier nombre connu
   catch(_){n=0}   // serveur injoignable : on cache l'indicateur plutôt que d'afficher un faux nombre
   finally{clearTimeout(to)}
   draw();
 };
 beat(); setInterval(beat,60000); document.addEventListener("visibilitychange",beat);
+addEventListener("pagehide",()=>{try{navigator.sendBeacon(RANKED_API+"/api/online/leave",new Blob([JSON.stringify({sid})],{type:"text/plain"}))}catch(_){}}); // fermeture ou rechargement : retiré du compte tout de suite
 if(typeof setLang==="function"){const sl=setLang; setLang=function(l){const r=sl.apply(this,arguments); draw(); return r}} // le texte suit la langue
 })();
 

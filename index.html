@@ -560,7 +560,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.170 · 21/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.175 · 21/10/2026</b></footer>
 
 <script>
 const G_SHEETS={
@@ -1188,7 +1188,7 @@ function foesOf(e){ // tous les adversaires de e (en 1v1 : une liste à un seul 
 function foeOf(e){ // cible principale : en 1v1 l'autre ; en multi l'adversaire vivant le plus proche du point visé (ou de soi)
   if(!isMulti())return e===player?foe:player;
   const L=foesOf(e).filter(alive); if(!L.length)return foesOf(e)[0]||e;
-  const p=(e===player&&!e.bot&&typeof mouse!=="undefined"&&mouse)?{x:mouse.wx,y:mouse.wy}:(e.tgt&&L.includes(e.tgt)?e.tgt:e);
+  const p=(e===player&&!e.bot&&typeof mouse!=="undefined"&&mouse)?{x:mouse.wx,y:mouse.wy}:(!e.bot&&e.aimPt?{x:e.aimPt.wx,y:e.aimPt.wy}:(e.tgt&&L.includes(e.tgt)?e.tgt:e)); // un joueur distant (invité) : l'hôte connaît son point visé (aimPt) ; sans cela le sort partait vers l'ennemi le plus proche de LUI, pas de son curseur
   let best=L[0],bd=1e9; for(const t of L){const d=Math.hypot(t.x-p.x,t.y-p.y); if(d<bd){bd=d;best=t}} return best;
 }
 // mêlée en multi : les autres adversaires proches du point d'impact sont touchés aussi (en 1v1 : rien ne change)
@@ -6228,7 +6228,7 @@ st2.textContent='#ffaBox{text-align:left}#ffaBox .fhead{display:flex;justify-con
  '#ffaMsg{min-height:18px;color:#ffe45e;font-size:13px}#ffaMsg:empty{display:none}@media(max-width:820px){#ffaBox .fcards,#ffaBox .fsalon{grid-template-columns:1fr}}';
 document.head.appendChild(st2);
 const st3=document.createElement("style");
-st3.textContent='#ffaBox .farena{margin-top:8px}#ffaBox .fsalon{grid-template-columns:270px 1fr}#ffaBox .farena .atiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 4px}#ffaBox .farena .atiles button{display:flex;justify-content:flex-start;padding:2px;min-width:0;width:100%;font-size:10px}#ffaBox .farena small{text-align:center;color:#9fb4ff;font-weight:500}';
+st3.textContent='#ffaBox .fteam{min-height:20px}#ffaBox .farena{margin-top:8px}#ffaBox .fsalon{grid-template-columns:270px 1fr}#ffaBox .farena .atiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px 4px}#ffaBox .farena .atiles button{display:flex;justify-content:flex-start;padding:2px;min-width:0;width:100%;font-size:10px}#ffaBox .farena small{text-align:center;color:#9fb4ff;font-weight:500}';
 document.head.appendChild(st3);
 const onl=document.getElementById("onl"), rowEl=document.getElementById("netRow");
 if(onl)onl.appendChild(box); // après la carte du salon 1v1 (net.js)
@@ -6258,10 +6258,10 @@ function render(){
   h+='<div class="fteam" id="ffaTeam"></div>';
   h+='<div id="ffaMsg" role="status"></div>';
   const keep=(document.getElementById("ffaMsg")||{}).textContent;
-  box.innerHTML=h; if(keep)say(keep); if(M.role==="host")arenaTilesBind(box);
+  box.innerHTML=h; teamLine(); if(keep)say(keep); if(M.role==="host")arenaTilesBind(box);
   const g=id=>document.getElementById(id);
-  if(g("ffaCreate"))g("ffaCreate").onclick=()=>{if(!teamOk())return; host()};
-  if(g("ffaJoin"))g("ffaJoin").onclick=()=>{const c=(g("ffaCode").value||"").trim().toUpperCase(); if(c.length!==4)return say(L?"Enter the 4-letter code":"Saisis le code (4 lettres)"); if(!teamOk())return; join(c)};
+  if(g("ffaCreate"))g("ffaCreate").onclick=()=>host();   // créer ou rejoindre un salon ne demande plus d'équipe : elle n'est exigée qu'au moment de « Prêt » (la ligne « Ton équipe » du salon indique quoi faire)
+  if(g("ffaJoin"))g("ffaJoin").onclick=()=>{const c=(g("ffaCode").value||"").trim().toUpperCase(); if(c.length!==4)return say(L?"Enter the 4-letter code":"Saisis le code (4 lettres)"); join(c)};
   if(g("ffaCode"))g("ffaCode").onkeydown=e=>e.stopPropagation();
   if(g("ffaReady"))g("ffaReady").onclick=()=>{if(!M.ready&&!teamOk(true))return; M.ready=!M.ready; sendHello(); render()};
   if(g("ffaGo"))g("ffaGo").onclick=()=>hostStart();
@@ -6328,7 +6328,7 @@ function onHostMsg(slot,m){
   if(m.t==="mv"){ if(g.ko<=0&&g.stun<=0&&Number.isFinite(m.x)&&Number.isFinite(m.y))g.moveTarget=m.c?{x:m.x,y:m.y,chase:true}:{x:clampX(m.x),y:clampY(m.y)} }
   else if(m.t==="sh"){ g.wantShield=!!m.v&&g.ko<=0 }
   else if(m.t==="cast"){ M.ackSeq[slot]=Math.max(M.ackSeq[slot]||0,Number(m.seq)||0); if(g.ko>0||!(SPL[m.id]||m.id==="swap"||m.id==="flash"||m.id==="taunt"))return;
-    if(SPL[m.id]&&!(g.kit||[]).includes(m.id)){DIAG.add("salon:sort refusé (hors du kit connu de l'hôte)",{slot,id:m.id}); const C=M.conns[slot], now=performance.now(); if(C&&C.r&&C.r.open&&!(C.rejAt>now-2000)){C.rejAt=now; C.r.send({t:"rej",id:m.id,why:"kit"})}}
+    if(SPL[m.id]&&m.id!=="swap"&&m.id!=="flash"&&m.id!=="taunt"&&!(g.kit||[]).includes(m.id)){DIAG.add("salon:sort refusé (hors du kit connu de l'hôte)",{slot,id:m.id}); const C=M.conns[slot], now=performance.now(); if(C&&C.r&&C.r.open&&!(C.rejAt>now-2000)){C.rejAt=now; C.r.send({t:"rej",id:m.id,why:"kit"})}}
     g.holdKey=!!m.hd; g.holdNet=true; g.aimPt={wx:m.wx,wy:m.wy}; g.aimMode=["off","assist","lock"].includes(m.am)?m.am:"assist"; cast(g,m.id) }
   else if(m.t==="cancel"){ if(g.rush&&g.rush.ph==="chan")cancelRush(g,false);else if(g.chan)cancelChan(g,false) }
   else if(m.t==="hold"){ g.holdKey=!!m.v; g.holdNet=true }
@@ -6446,19 +6446,20 @@ setInterval(()=>{
 },400);
 let _ffaLang=LANG; setInterval(()=>{ if(LANG!==_ffaLang){_ffaLang=LANG; render()} },500); // le cadre mêlée suit la langue choisie
 // rappel de l'équipe jouée, selon le nombre de joueurs (mis à jour sans reconstruire le cadre : le code saisi reste)
-setInterval(()=>{const el=document.getElementById("ffaTeam"); if(!el)return; const L=LANG==="en", need=reqSize(M.n), t=picks.slice(0,need).map(k=>(SPECIES[k]&&SPECIES[k].name)||k), ok=t.length===need;
+function teamLine(){const el=document.getElementById("ffaTeam"); if(!el)return; const L=LANG==="en", need=reqSize(M.n), t=picks.slice(0,need).map(k=>(SPECIES[k]&&SPECIES[k].name)||k), ok=t.length===need;
   el.style.color=ok?"#7fe0a0":"#ffd24a";
   const m=document.getElementById("ffaMsg"); if(m&&ok&&validTeam(myTeam(),need)&&/^(Choisis|Pick|Taille|Team size)/.test(m.textContent))m.textContent="";
-  el.textContent=(L?"Your team: ":"Ton équipe : ")+(t.length?t.join(" + "):"-")+" ("+t.length+"/"+need+(M.role?(L?" Aces, locked for "+(M.n>=3?"3-4 players":"2 players"):" Aces, verrouillé pour "+(M.n>=3?"3-4 joueurs":"2 joueurs")):(L?" Aces if 2 players, 2 if 3-4":" Aces à 2 joueurs, 2 à 3-4"))+")"+(ok?"":(L?" - pick them in the selection below":" - choisis-les dans la sélection ci-dessous"));
+  el.textContent=(L?"Your team: ":"Ton équipe : ")+(t.length?t.join(" + "):"-")+" ("+t.length+"/"+need+(M.role?(L?" Aces, locked for "+(M.n>=3?"3-4 players":"2 players"):" Aces, verrouillé pour "+(M.n>=3?"3-4 joueurs":"2 joueurs")):(L?" Aces if 2 players, 2 if 3-4":" Aces à 2 joueurs, 2 à 3-4"))+")"+(ok?"":(L?" - pick them in the selection below":" - choisis-les dans la sélection ci-dessous"));}   // ligne « Ton équipe » : remplie aussi juste après chaque affichage du salon (sinon elle restait vide jusqu'à 0,4 s, ce qui faisait clignoter la ligne et sauter la page)
+setInterval(()=>{ if(!document.getElementById("ffaTeam"))return; teamLine();
   // le nombre d'Aces sélectionnables change avec le salon : on rafraîchit la sélection
-  const cap=M.role?need:0; if(M.capSeen!==cap){M.capSeen=cap; if(typeof refreshMenu==="function"&&!menuEl.hidden)refreshMenu()}},400);
+  const need=reqSize(M.n), cap=M.role?need:0; if(M.capSeen!==cap){M.capSeen=cap; if(typeof refreshMenu==="function"&&!menuEl.hidden)refreshMenu()}},400);
 window.FFA_ONLINE_CAP=()=>M.role?reqSize(M.n):0;
 render();
 NET.ffaState=M;
 })();
 
 /* ===== Souris verrouillée dans la fenêtre pendant le combat : curseur virtuel, Échap libère et met en pause ===== */
-const PL={on:false,x:0,y:0,rel:false};
+const PL={on:false,x:0,y:0,rel:false,skip:0}, PL_JUMP=450; // PL_JUMP : déplacement maximal accepté en un seul événement (pixels)
 const PL_ON=()=>{try{return localStorage.getItem("aceLock")!=="0"}catch(_){return true}}; // réglable dans Paramètres
 function ptrXY(e){return PL.on?{clientX:PL.x,clientY:PL.y}:{clientX:e.clientX,clientY:e.clientY}}
 const plCur=document.createElement("div"); plCur.id="plCur"; plCur.hidden=true; document.body.appendChild(plCur);
@@ -6470,7 +6471,10 @@ const plBox=()=>stage.getBoundingClientRect();
 function plPlace(){plCur.style.transform="translate("+PL.x+"px,"+PL.y+"px)"}
 document.addEventListener("pointermove",e=>{
   if(!PL.on)return;
-  const r=plBox(); PL.x=Math.max(r.left,Math.min(r.right-1,PL.x+(e.movementX||0))); PL.y=Math.max(r.top,Math.min(r.bottom-1,PL.y+(e.movementY||0))); plPlace();
+  let dx=e.movementX||0, dy=e.movementY||0;
+  if(PL.skip>0){PL.skip--; return}                                   // le premier mouvement après le verrouillage peut être un saut parasite (connu sur Chrome)
+  if(Math.abs(dx)>PL_JUMP||Math.abs(dy)>PL_JUMP)return;               // un déplacement d'un seul coup supérieur à la limite est un saut parasite, pas un geste de la main
+  const r=plBox(); PL.x=Math.max(r.left,Math.min(r.right-1,PL.x+dx)); PL.y=Math.max(r.top,Math.min(r.bottom-1,PL.y+dy)); plPlace();
 },true);
 document.addEventListener("pointerdown",e=>{
   if(PL.on){ // sous verrou, les boutons se cliquent via le curseur virtuel
@@ -6484,7 +6488,7 @@ document.addEventListener("pointerdown",e=>{
   try{const p=stage.requestPointerLock(); if(p&&p.catch)p.catch(()=>{})}catch(_){}
 },true);
 document.addEventListener("pointerlockchange",()=>{
-  PL.on=document.pointerLockElement===stage; plCur.hidden=!PL.on; if(PL.on)plPlace();
+  PL.on=document.pointerLockElement===stage; plCur.hidden=!PL.on; if(PL.on){PL.skip=1; plPlace()}
   if(!PL.on){ if(!PL.rel&&plWant())setPause(true); PL.rel=false }
 });
 setInterval(()=>{if(PL.on&&!plWant()){PL.rel=true; try{document.exitPointerLock()}catch(_){}}},150);

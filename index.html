@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.238 · 22/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.239 · 23/10/2026</b></footer>
 
 <script>
 const G_SHEETS={
@@ -3193,6 +3193,7 @@ const toucher=()=>typeof matchMedia==="function"&&matchMedia("(hover: none)").ma
 function moveInfo(id){const s=SPL[id];return catFr(s.cat)+" · "+TYPE_FR[s.type]+(id in POW_OFF?" · Puiss. "+(POW_OFF[id]||"—"):s.power?" · Puiss. "+s.power:"")+" · Recharge "+s.cd+" s"}
 function buildEquip(){
   const ro=!!hoverKey&&hoverKey!==pick, k=ro?hoverKey:pick, sp=SPECIES[k], dk=draftOf(k), np=picks.indexOf(k);
+  const _g0=equipEl.querySelector(".eqg"), keepScroll=(buildEquip._k===k&&_g0)?_g0.scrollTop:0; buildEquip._k=k; // la liste de sorts garde son défilement quand on équipe ou retire un sort
   const en=LANG==="en", tag=ro?(en?"PREVIEW · click to equip (slot ":"APERÇU · clique pour l'équiper (slot ")+(slotCible()+1)+")":(np>=0&&np<teamCap()?(en?"EQUIPPED · SLOT ":"ÉQUIPÉ · SLOT ")+(np+1)+(en?" · pick its 4 moves":" · choisis ses 4 sorts"):(en?"NOT EQUIPPED":"PAS ÉQUIPÉ"));
   const stt=STAT_ROWS.map(([l,s])=>{const o=sp.official&&sp.official[s]!==undefined&&sp.official[s]!==sp.base[s]; // jauge jaune = stat ajustée pour l'équilibrage
     return '<div class="dsr'+(o?' adj':'')+'"'+(o?' title="Ajusté pour l\'équilibrage (officiel : '+sp.official[s]+')"':'')+'><span>'+l+'</span><u><s style="width:'+Math.round(sp.base[s]/190*100)+'%"></s></u><em>'+sp.base[s]+(o?'*':'')+'</em></div>'}).join("")+(sp.official?'<small class="adjnote">* ajusté pour l\'équilibrage</small>':'');
@@ -3212,6 +3213,7 @@ function buildEquip(){
     grid.appendChild(b);
   });
   equipEl.querySelector("#eqDef").addEventListener("click",()=>{draft[k]=SPECIES[k].kit.slice();refreshMenu()}); if(ro)equipEl.querySelector("#eqDef").disabled=true;
+  grid.scrollTop=keepScroll;
 }
 const STAT_ROWS=[["PV","hp"],["Atq","atk"],["Déf","def"],["Atq. Spé","spa"],["Déf. Spé","spd"],["Vit","spe"]];
 let triMode=(()=>{try{return localStorage.getItem("aceTri")==="az"?"az":"num"}catch(_){return"num"}})();
@@ -3998,13 +4000,14 @@ ZONE2.gz=(z,i,dt)=>{
         else if(C.style==="sand")spark(px-20,py-rand(0,10),rand(120,190),rand(-12,12),rand(.3,.5),["#d1a35c","#e8d8a0","#8a6030"][Math.floor(rand(0,3))],0,2);
         else if(C.style==="whirl"){const ang=Math.atan2(py-z.y,(px-z.x)),sp2=70;spark(px,py,-Math.sin(ang)*sp2,Math.cos(ang)*sp2*.5-rand(0,25),rand(.4,.7),Math.random()<.5?WATERC[2]:"#ffffff",0,2)}
         else if(C.style==="rain")spark(px+rand(-4,4),py-rand(40,70),rand(-8,-3),rand(170,230),rand(.22,.34),WATERC[1+Math.floor(rand(0,2))],0,2);
-        else if(C.style==="psyfield")spark(px,py,rand(-6,6),-rand(30,80),rand(.5,.9),PSYC[1+Math.floor(rand(0,3))],-20,2);
+        else if(C.style==="psyfield")spark(px,py,rand(-6,6),-rand(30,80),rand(.5,.9),PSYC[1+Math.floor(rand(0,3))],-20,2)
+        else if(C.style==="embers")spark(px,py,rand(-8,8),-rand(30,80),rand(.5,.9),FLAMEC[1+Math.floor(rand(0,3))],-30,Math.random()<.4?3:2);
         else spark(px,py,rand(-8,8),-rand(20,60),rand(.5,.9),GRASSC[1+Math.floor(rand(0,3))],-10,2)}
       if(C.style==="leech"&&inside&&Math.random()<dt*14){const sx=t.x+rand(-6,6),sy=t.y-t.sp.body*.6,dx=z.o.x-sx,dy=(z.o.y-z.o.sp.body*.6)-sy,d=Math.hypot(dx,dy)||1;spark(sx,sy,dx/d*120,dy/d*120,Math.min(.6,d/120),GRASSC[2+Math.floor(rand(0,2))],0,2)}
       if(C.slow&&gHost())IN.forEach(v=>{v.slow=Math.max(v.slow,.3)});
       if(z.tk<=0){z.tk=C.tick;
         if(gHost()){
-          for(const t of IN)if(!t.shieldOn){const dm=Math.max(1,Math.round(calcDamage(z.o,t,sp)*C.dot)); applyDamage(t,z.o,{x:z.x,y:z.y},dm,{dot:true}); colorBurst(t.x,t.y-8,5,pal,10,50);
+          for(const t of IN)if(!t.shieldOn){if(C.burn)applyBurn(t,z.o); const dm=Math.max(1,Math.round(calcDamage(z.o,t,sp)*C.dot)); applyDamage(t,z.o,{x:z.x,y:z.y},dm,{dot:true}); colorBurst(t.x,t.y-8,5,pal,10,50);
             if(C.drain&&alive(z.o)){const h=Math.max(1,Math.round(dm*C.drain));z.o.hp=Math.min(z.o.maxHp,z.o.hp+h);pops.push({x:z.o.x,y:z.o.y-z.o.sp.body-22,t:0,txt:"+"+h});colorBurst(z.o.x,z.o.y-12,6,pal,10,50)}}
           if(own&&C.healOwner){const h=Math.round(z.o.maxHp*C.healOwner);z.o.hp=Math.min(z.o.maxHp,z.o.hp+h);pops.push({x:z.o.x,y:z.o.y-z.o.sp.body-22,t:0,txt:"+"+h});colorBurst(z.o.x,z.o.y-12,8,pal,10,60)}
         }
@@ -4609,8 +4612,8 @@ function updateBursts(dt){
     if(!alive(e)||e.stun>0||e.tunnel){e.bst=null;return}
     S.t+=dt;
     while(S.n<d.count&&S.t>=S.n*d.interval){
-      const av=aimAt(e,false); if(av)e.aim=av; const f=e.aim||FACE[e.dir], a=Math.atan2(f[1],f[0])+(d.fan?(S.n-(d.count-1)/2)*d.fan:0)+(Math.random()-.5)*d.spread, vx=Math.cos(a), vy=Math.sin(a);
-      orbs.push({x:e.x+vx*14,y:e.y+vy*14,vx,vy,trav:0,t:0,o:e,id:d.id}); S.n++;
+      const av=aimAt(e,true); if(av)e.aim=av; const f=e.aim||FACE[e.dir], a=Math.atan2(f[1],f[0])+(d.fan?(S.n-(d.count-1)/2)*d.fan:0)+(Math.random()-.5)*d.spread, vx=Math.cos(a), vy=Math.sin(a);
+      const o={x:e.x+vx*14,y:e.y+vy*14,vx,vy,trav:0,t:0,o:e,id:d.id}; if(d.converge){const dist=Math.min(d.range*.85,(av&&av[2])||d.range*.6); o.cv={x:e.x+f[0]*dist,y:e.y+f[1]*dist}} orbs.push(o); S.n++;
       if(typeof sfx==="function"&&d.sfx)sfx(d.sfx,"fight",.5,.95+Math.random()*.2,e.x);
     }
     if(S.n>=d.count)e.bst=null;
@@ -5106,6 +5109,7 @@ function castCurse(e){
 const LATER=[];
 FX_UPDATERS.push(dt=>{
   for(let i=LATER.length-1;i>=0;i--){const L=LATER[i]; L.t-=dt; if(L.tick)L.tick(L,dt); if(L.t<=0){LATER.splice(i,1); L.fn()}}
+  orbs.forEach(o=>{ if(o.cv){const dx=o.cv.x-o.x,dy=o.cv.y-o.y,d=Math.hypot(dx,dy); if(d>10){const vx=o.vx+dx/d*dt*7,vy=o.vy+dy/d*dt*7,n=Math.hypot(vx,vy); o.vx=vx/n; o.vy=vy/n}} });
   fighters.forEach(f=>{ if(f.fmark>0){f.fmark-=dt; if(Math.random()<dt*10)spark(f.x+rand(-5,5),f.y-f.sp.body-4,rand(-6,6),-rand(20,40),rand(.3,.5),FLAMEC[1+Math.floor(rand(0,3))],-20,2)} });
 });
 const later=(t,fn,tick)=>{LATER.push({t,fn,tick})};
@@ -5119,7 +5123,9 @@ defBurst({id:"fblast",count:1,interval:0,spread:0,speed:230,range:270,hit:14,sfx
   orb:o=>{const x=o.x,y=o.y-14,r=o.t*5; for(let k=0;k<5;k++){const a=r+k*1.2566; mfxLine(x,y,x+Math.cos(a)*12,y+Math.sin(a)*12,3,FLAMEC[k%2?1:2])} mfxDisc(x,y,6,FLAMEC[1]); mfxDisc(x,y,4,FLAMEC[2]); mfxDisc(x,y,2,"#ffffff"); for(let k=1;k<6;k++)px(FLAMEC[1+k%3],x-o.vx*k*4+Math.sin(o.t*30+k)*2,y-o.vy*k*3,4-(k>>1),4-(k>>1))},
   desc:"Grande étoile de feu lancée lentement : elle explose en étoile, brûle la cible et laisse des braises.",en:"A big, slow fire star: it bursts into a star, burns the target and leaves embers."});
 ORBHIT.fblast=(o,t)=>applyBurn(t,o.o);
-ORBEND.fblast=o=>{fx.push({k:"star",x:o.x,y:o.y-12,sy:o.y+.7,t:0,life:.5,r:24,col:FLAMEC[3]}); rings.push({x:o.x,y:o.y,t:0,dur:.4,max:40,c:FLAMEC[2]}); colorBurst(o.x,o.y-8,26,FLAMEC,60,190); for(let i=0;i<12;i++){const a=i*.52;spark(o.x,o.y-6,Math.cos(a)*90,Math.sin(a)*50-40,rand(.8,1.4),FLAMEC[1+i%3],60,3)} shake=Math.max(shake,.2)};
+GZ["~fblastf"]={kind:"field",range:0,r:30,delay:0,life:2.2,tick:.5,dot:.25,slow:0,burn:true,style:"embers"};
+SPL["~fblastf"]={name:"",type:"fire",cat:"spec",power:10,cost:0,cd:0};
+ORBEND.fblast=o=>{ zones.push({k:"gz",g:"~fblastf",x:o.x,y:o.y,t:0,o:o.o,done:false,u:Math.floor(Math.random()*1e9)});fx.push({k:"star",x:o.x,y:o.y-12,sy:o.y+.7,t:0,life:.5,r:24,col:FLAMEC[3]}); rings.push({x:o.x,y:o.y,t:0,dur:.4,max:40,c:FLAMEC[2]}); colorBurst(o.x,o.y-8,26,FLAMEC,60,190); for(let i=0;i<12;i++){const a=i*.52;spark(o.x,o.y-6,Math.cos(a)*90,Math.sin(a)*50-40,rand(.8,1.4),FLAMEC[1+i%3],60,3)} shake=Math.max(shake,.2)};
 // ---------- 2. Fatal-Foudre : cercle au sol, puis l'éclair tombe du ciel (esquivable) ----------
 lot1("thndr","Fatal-Foudre","Thunder","electric","spec",36,10);
 GPAL.electric=TYPE_PAL.electric;
@@ -5143,7 +5149,7 @@ defRay({id:"sbeam",style:"sun",pal:["#c8a010","#f0d040","#fff4a0","#a8e060","#ff
 }}
 // ---------- 4. Draco-Choc : trois têtes de dragon spectrales en éventail ----------
 lot1("dpulse","Draco-Choc","Dragon Pulse","dragon","spec",12,8);
-defBurst({id:"dpulse",count:3,interval:0,spread:0,fan:.3,speed:330,range:230,hit:10,sfx:794,
+defBurst({id:"dpulse",count:3,interval:0,spread:0,fan:.34,converge:true,speed:330,range:230,hit:10,sfx:794,
   orb:o=>{const x=o.x,y=o.y-14,s=o.vx<0?-1:1,w=Math.sin(o.t*18)*2; for(let k=7;k>=1;k--)px(k<3?"#c0a0ff":"#7038f866",x-o.vx*k*4,y-o.vy*k*3+w*k*.15,6-k*.5,5-k*.4); px("#5a2fc0",x-5,y-3,11,7); px("#a77bff",x-4,y-3,10,5); px("#d8c4ff",x+s*4-1,y-5,3,3); px("#ffffff",x+s*3,y-2,2,2); px("#5a2fc0",x+s*6,y+2,4,2)},
   desc:"Trois têtes de dragon spectrales partent en éventail et frappent la cible.",en:"Three spectral dragon heads fan out and hit the target."});
 ORBEND.dpulse=o=>{rings.push({x:o.x,y:o.y,t:0,dur:.3,max:18,c:"#c0a0ff"}); colorBurst(o.x,o.y-8,8,FIRE,30,100)};
@@ -5189,7 +5195,8 @@ defMelee({id:"pjab",name:"Direct Toxik",type:"poison",power:22,cd:1.4,fx:"pierce
 defMelee({id:"zhead",name:"Psykoud’Boul",type:"psychic",power:28,cd:4,fx:"headbutt",pal:PSYC,
   desc:"Coup de tête dans un halo psy : le lanceur fonce en avant et repousse l'ennemi.",en:{name:"Zen Headbutt",desc:"A headbutt in a psychic halo: the user lunges forward and knocks the foe back."},sfx:{cast:766,hit:750},
   sparks:(x,y)=>{for(let i=0;i<8;i++)spark(x,y,rand(-80,80),rand(-60,40),rand(.3,.6),PSYC[i%5],0,2)},after:(e,t)=>{const dx=t.x-e.x,dy=t.y-e.y,d=Math.hypot(dx,dy)||1; t.kb={vx:dx/d*420,vy:dy/d*420}}});
-{const _h=ACE2.zhead.hit; ACE2.zhead.hit=function(e,id){const f=e.aim||FACE[e.dir]; e.x=clampX(e.x+f[0]*26); e.y=clampY(e.y+f[1]*14); rings.push({x:e.x,y:e.y,t:0,dur:.25,max:22,c:PSYC[1]}); _h(e,id)}}
+{const _h=ACE2.zhead.hit; ACE2.zhead.hit=function(e,id){const f=e.aim||FACE[e.dir]; e.lock=Math.max(e.lock,.14); rings.push({x:e.x,y:e.y,t:0,dur:.25,max:22,c:PSYC[1]});
+  later(.12,()=>{ if(alive(e)&&e.stun<=0)_h(e,id) },(L,dt)=>{ if(!alive(e))return; e.x=clampX(e.x+f[0]*26*dt/.12); e.y=clampY(e.y+f[1]*14*dt/.12); if(Math.random()<.7)spark(e.x-f[0]*8,e.y-8,-f[0]*30,rand(-15,5),.3,PSYC[Math.floor(rand(0,5))],0,3) })}}
 // ---------- 11. Casse-Brique : brise le bouclier adverse, les murs et les obstacles touchés ----------
 defMelee({id:"bbreak",name:"Casse-Brique",type:"fighting",power:24,cd:2.5,fx:"chop",pal:["#8a1c18","#c03028","#ffffff","#ffe0c0","#ffffff"],
   desc:"Coup de tranche qui brise le bouclier adverse et détruit les murs et obstacles touchés.",en:{name:"Brick Break",desc:"A chop that breaks the foe's shield and destroys walls and obstacles it hits."},sfx:{cast:402,hit:750},

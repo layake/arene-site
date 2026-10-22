@@ -578,7 +578,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.198 · 22/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.200 · 22/10/2026</b></footer>
 
 <script>
 const G_SHEETS={
@@ -5133,6 +5133,17 @@ function majApresDonnees(){
   if(sig===MENU_SIG)return; MENU_SIG=sig;
   try{if(typeof buildMenu==="function"){buildMenu(); refreshMenu()}}catch(_){}
 }
+// Données publiées en avance sur ce site (Pokémon ou capacité pas encore dans cette version) : on ignore ce qu'on ne connaît pas et on applique le reste, au lieu de tout refuser.
+function connu(d){
+  if(!d||typeof d!=="object")return d;
+  const o=Object.assign({},d); let ign=0;
+  if(d.capacites)o.capacites=Object.fromEntries(Object.entries(d.capacites).filter(([k])=>SPL[k]||(ign++,false)));
+  if(d.pokemon)o.pokemon=Object.fromEntries(Object.entries(d.pokemon).filter(([k])=>(SPECIES[k]&&SPECIES[k].pool)||(ign++,false)).map(([k,p])=>{
+    const q=Object.assign({},p);
+    if((q.capacites&&q.capacites.some(id=>!SPL[id]))||(q.kit&&q.kit.some(id=>!SPL[id]))){delete q.capacites; delete q.kit; ign++} // capacité inconnue : on garde la liste et le set de ce site
+    return [k,q]}));
+  o.__ignores=ign; return o;
+}
 // Valeurs publiées par Lancelot (éditeur de données) : lues au démarrage, appliquées dès que le joueur est dans un menu (jamais en plein combat).
 // Serveur injoignable ou données refusées : le jeu garde ses valeurs intégrées.
 async function chargerDonnees(){
@@ -5142,7 +5153,9 @@ async function chargerDonnees(){
     const j=await r.json(); if(!r.ok||!j||!j.version)return;
     const go=()=>{
       if(!menuOpen){setTimeout(go,3000); return}
-      const n=appliquerDonnees(j.donnees);
+      const dd=connu(j.donnees), ign=dd&&dd.__ignores||0; if(dd)delete dd.__ignores;
+      const n=appliquerDonnees(dd);
+      if(ign){try{DIAG.add("données:éléments ignorés (pas encore dans ce site)",ign)}catch(_){}}
       if(n<0){try{DIAG.add("données:refusées",j.version)}catch(_){} return}
       DONNEES.version=j.version; DONNEES.source="serveur"; DONNEES.propre=lireDonnees(); majApresDonnees();
       try{DIAG.add("données:version",j.version)}catch(_){}
@@ -5154,13 +5167,13 @@ async function chargerDonnees(){
 // Salon en ligne : l'hôte impose ses valeurs à tous (chacun peut avoir une version différente selon le moment où il a ouvert la page).
 function imposerDonnees(dn){
   if(!dn||typeof dn!=="object")return;
-  const n=appliquerDonnees(dn); if(n>0){try{DIAG.add("données:imposées par l'hôte",n)}catch(_){} majApresDonnees()}
+  const dd=connu(dn); if(dd)delete dd.__ignores; const n=appliquerDonnees(dd); if(n>0){try{DIAG.add("données:imposées par l'hôte",n)}catch(_){} majApresDonnees()}
 }
 function restaurerDonnees(){
   if(JSON.stringify(lireDonnees())===JSON.stringify(DONNEES.propre))return;
   appliquerDonnees(DONNEES.propre); majApresDonnees();
 }
-setTimeout(()=>{ if(typeof NET!=="undefined"&&NET.leave){const _l=NET.leave; NET.leave=function(){restaurerDonnees(); return _l.apply(this,arguments)}} chargerDonnees() },0);
+setTimeout(()=>{ majApresDonnees(); /* le menu a été construit avant l'application des valeurs des fichiers : on le reconstruit (Pokémon désactivés retirés) */ if(typeof NET!=="undefined"&&NET.leave){const _l=NET.leave; NET.leave=function(){restaurerDonnees(); return _l.apply(this,arguments)}} chargerDonnees() },0);
 
 // ===== Passe sons : sorts des Aces récents et sorts de terrain (effets PMD) =====
 Object.assign(SFX_MAP,{

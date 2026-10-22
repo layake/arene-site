@@ -1292,7 +1292,7 @@ const ANC=e=>{const a=ALTOF(e);return a?a.anch:e.sp.anch[e.anim]};
 const ANF=e=>{const r=ANC(e)[e.dir]||ANC(e)[0];return r[Math.min(e.frame||0,r.length-1)]};
 const HITF=e=>{const a=ALTOF(e);return a?a.hit:e.sp.hitFrame};
 const ATKR=e=>{const a=ALTOF(e);return a&&a.rate||e.sp.atkRate||1};
-function setAnim(e,name){ if(name!=="attack")e.lockPt=null; if(e.anim!==name){e.anim=name;e.frame=0;e.tick=0;e.hit=false;if(name==="idle")e.rest=rand(.8,2)} }
+function setAnim(e,name){ if(!e.sp.sheets[name])name=e.sp.sheets.walk?"walk":"idle"; if(name!=="attack")e.lockPt=null; if(e.anim!==name){e.anim=name;e.frame=0;e.tick=0;e.hit=false;if(name==="idle")e.rest=rand(.8,2)} }
 // Idle plays once, then holds its first frame for a random pause before looping again.
 function advance(e,dt){
   if(e.anim==="idle"&&e.rest>0){e.rest-=dt;e.frame=0;e.tick=0;return}

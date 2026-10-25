@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.262 · 25/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.264 · 25/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -3032,12 +3032,12 @@ const shdBtn=document.getElementById("shd");
 const shade=(hex,f)=>{const n=parseInt(hex.slice(1),16);const c=v=>clamp(Math.round(v*f),0,255);return"#"+((1<<24)+(c(n>>16)<<16)+(c(n>>8&255)<<8)+c(n&255)).toString(16).slice(1)};
 function applyKit(){
   slotBtns.forEach((btn,i)=>{
-    const id=player.kit[i], sp=SPL[id], c=TYPE_COL[sp.type];
+    const id=player.kit[i], sp=SPL[id]; btn.style.display=sp?"":"none"; if(!sp)return; const c=TYPE_COL[sp.type]; // case vide : Expédition, un Pokémon de bas niveau connaît moins de 4 capacités
     btn.querySelector(".k").textContent=SLOT_KEYS[i]; btn.querySelector(".c").textContent=sp.cost; btn.querySelector(".n").textContent=sp.name;
     btn.style.setProperty("--g1",shade(c,1.1)); btn.style.setProperty("--g2",shade(c,.5)); btn.title=sp.name+" ("+TYPE_FR[sp.type]+", "+catFr(sp.cat).toLowerCase()+")";
     SLOT_T.delete(btn);
   });
-  const kit=player.kit.map((id,i)=>"<b>"+SLOT_KEYS[i]+"</b> "+SPL[id].name+" ("+Math.round(SPL[id].cd*10)/10+" s)").join(" · ");
+  const kit=player.kit.filter(id=>SPL[id]).map((id,i)=>"<b>"+SLOT_KEYS[i]+"</b> "+SPL[id].name+" ("+Math.round(SPL[id].cd*10)/10+" s)").join(" · ");
   helpEl.innerHTML="<b>Clic droit</b> : se déplacer (maintenir pour suivre)<br><b>Clic droit sur l'ennemi</b> : le poursuivre<br><b>"+keyLabel(BIND.shield)+"</b> : bouclier (maintenir)<br><b>"+keyLabel(BIND.swap)+"</b> : changer d'Ace (0,5 s)<br><b>"+keyLabel(BIND.flash)+"</b> : Flash, téléportation vers le curseur (recharge 5 s)<br>"+kit+"<br><b>Clic gauche</b> : lancer le sort · <b>Clic droit</b> ou <b>Échap</b> : annuler<br><b>Souris</b> : bloquée dans la fenêtre pendant le combat, <b>Échap</b> la libère et met en pause<br><b>Jets (Lance-Flammes, Hydrocanon, Blizzard)</b> : maintenir la touche, on reste immobile, relâcher coupe<br>Le mode de lancer se règle dans le menu Pause.";
   scoreEl.textContent=""; scoreTxt="";
 }
@@ -3102,7 +3102,7 @@ const scoreEl=document.getElementById("score"); let scoreTxt="";
 function updateHud(){
   hudUpdate();
   slotBtns.forEach((btn,i)=>{
-    const id=player.kit[i], sp=SPL[id], ch=(id==="rush"&&player.rush&&player.rush.ph==="chan")||(id==="gleam"&&!!player.chan)||(!!SPL[id].buff&&!!player.bf[SPL[id].buff])||((id==="mburst"||id==="riposte")&&!!player.counter);
+    const id=player.kit[i], sp=SPL[id]; if(!sp)return; const ch=(id==="rush"&&player.rush&&player.rush.ph==="chan")||(id==="gleam"&&!!player.chan)||(!!SPL[id].buff&&!!player.bf[SPL[id].buff])||((id==="mburst"||id==="riposte")&&!!player.counter);
     setSlot(btn,cdOf(player,id),sp.cd,aiming===id||ch,sp.cost);
   });
   setSlot(flashBtn,cdOf(player,"flash"),FLASH.cd,false); swapBtn.hidden=!(player.team&&player.team.length>1); if(!swapBtn.hidden)setSlot(swapBtn,player.swapCd||0,SWAP.cd,!!player.swapC);
@@ -5762,55 +5762,6 @@ Object.assign(I18N_EXTRA,{"Repoussé":"Pushed back","Buée Noire":"Haze"});
 Object.assign(SFX_MAP,{bounce:{cast:678,hit:880},leafage:{cast:707,hit:880},smackdown:{cast:735,hit:735},watergun:{cast:861,hit:862},energyball:{cast:707,hit:771},smog:{cast:856},extrasensory:{cast:766,hit:891},leafstorm:{cast:707,hit:880},mdrain:{cast:707,hit:707},rollout:{cast:420,hit:735},
   leer:{cast:772,hit:850},screech:{cast:772,hit:850},smokescreen:{cast:803,hit:803},haze:{cast:845},defensecurl:{cast:884},doubleteam:{cast:392},shedtail:{cast:392},roar:{cast:752,hit:750}});
 
-// Prototype Expédition (étapes 2 et 3). Tout est inactif tant que EXPEDITION_PROTO est faux ; lancement : expStart(n) dans la console.
-const EXP_DATA={"_note":"Prototype Expédition (étape 1) : 8 ennemis existants, niveau 5. Pool = capacités accessibles (apprentissage.json) ; 4 tirées au hasard par ennemi à chaque vague. Aucun effet sur le jeu tant que EXPEDITION_PROTO est désactivé.","environnement":"prairie","niveau_equipe":5,"ennemis":[{"cle":"pikachu","nom":"Pikachu","types":["electric"],"niveau":5,"pool":["agility","bbreak","bodyslam","charm","chgbeam","decoy","drainkiss","electroball","endure","facade","fcpunch","fly","gknot","growl","irontail","kofd","lscreen","mkick","mpunch","nplot","protect","qatk","raindance","round","sleeprest","swift","tblaze","tbolt","tera","thief","thndr","thpunch","tidal","tkdn","tun","twave","uproar","wildchg"]},{"cle":"staraptor","nom":"Étouraptor","types":["normal","flying"],"niveau":5,"pool":["aace","acrobatics","agility","aircutter","airslash","bravebird","ccombat","decoy","dedge","dualwingbeat","endure","facade","fly","gimpact","growl","hbeam","heat","hurricane","protect","qatk","raindance","sleeprest","swift","tackle","tera","thief","tkdn","uproar","wingatk"]},{"cle":"sandslash","nom":"Sablaireau","types":["ground"],"niveau":5,"pool":["aace","agility","bbreak","bdoze","bodyslam","curse","decoy","dedge","drillrun","endure","epower","facade","fcblast","fcpunch","fswipe","furycut","gimpact","hbeam","hhorse","irontail","kofd","mclaw","mslap","mud","pjab","protect","psting","quake","round","rslide","rtomb","sandstorm","scl","scorchingsands","sdance","sedge","sleeprest","spikes","stantr","steelroller","stomb","swift","tera","thief","tkdn","trap","tun","xscis"]},{"cle":"luxray","nom":"Luxray","types":["electric"],"niveau":5,"pool":["agility","bodyslam","chgbeam","cray","crunch","decoy","dedge","electroball","endure","facade","fang","gimpact","hbeam","irontail","lscreen","protect","raindance","round","sleeprest","spower","swift","tackle","tblaze","tbolt","tera","thfang","thief","thndr","tkdn","twave","wildchg"]},{"cle":"lapras","nom":"Lokhlass","types":["water","ice"],"niveau":5,"pool":["avalanche","bdoze","blizzard","bodypress","bodyslam","charm","chillingwater","cray","curse","ddance","decoy","dedge","dpulse","drillrun","endure","facade","fsight","gimpact","growl","hbeam","hydrocanon","hypervoice","icebeam","icespike","ihead","irontail","iwind","liquidation","megahorn","outrage","protect","psy","quake","raindance","round","sleeprest","smartstrike","tbolt","tera","thndr","tidal","tkdn","waterfall","whirl","wpulse","zhead"]},{"cle":"nidoking","nom":"Nidoking","types":["poison","ground"],"niveau":5,"pool":["avalanche","bbreak","bdoze","blizzard","bodypress","bodyslam","decoy","dpulse","drillrun","endure","epower","facade","fblast","fcblast","flame","fpunch","gimpact","hbeam","hex","hhorse","icebeam","icepunch","irontail","iwind","megahorn","mkick","mpunch","mud","outrage","pjab","protect","psting","quake","raindance","rockblast","round","rslide","rtomb","sandstorm","sbomb","scl","scorchingsands","sedge","shball","sleeprest","smartstrike","spower","stantr","stomb","tbolt","thief","thndr","thpunch","tidal","trap","tspikes","tun","uproar","whirl"]},{"cle":"scizor","nom":"Cizayox","types":["bug","steel"],"niveau":5,"pool":["aace","acrobatics","agility","aircutter","airslash","assur","awave","bbreak","bpunch","bswing","ccombat","curse","decoy","dedge","dualwingbeat","endure","facade","fcannon","fswipe","furycut","gimpact","hbeam","idef","ihead","kofd","lscreen","mclaw","protect","qatk","raindance","round","sandstorm","sdance","sleeprest","spower","steelbeam","stomb","swift","tblaze","tera","thief","tkdn","wingatk","wsteel","xscis"]},{"cle":"machamp","nom":"Mackogneur","types":["fighting"],"niveau":5,"pool":["assur","bbreak","bdoze","bodyslam","ccombat","decoy","dedge","endure","facade","fblast","fcblast","flame","fpunch","gimpact","hbeam","hhorse","icepunch","kofd","lscreen","lsweep","mkick","mpunch","payb","pjab","protect","quake","raindance","retal","rockblast","round","rslide","rtomb","sedge","sleeprest","spower","stantr","thief","thpunch","tun"]}]};
-const EXP_TEAM=["sceptile","greninja","emboar"]; // ponytail: évolutions finales jouables, à remplacer par Arcko/Grenousse/Gruikui quand leurs sprites seront préparés
-const slotMax=(key,lv)=>Math.round(statsAtLv(SPECIES[key].base,lv).hp/HP_SCALE);
-function setLevel(e,lv){
-  if(!EXPEDITION_PROTO||!e||!e.sp||!e.sp.base) return false;
-  e.lv=lv; e.maxHp=slotMax(e.key,lv); e.hp=e.maxHp;
-  if(e.team) e.team.forEach(s=>{s.maxHp=slotMax(s.key,lv); s.hp=s.maxHp});
-  return true;
-}
-// Vague : l'équipe de 3 contre n ennemis (4 à 8), tous niveau lv. Mesure : EXP.t (durée), EXP.fpsMin / EXP.fpsAvg.
-function expStart(n,lv){
-  if(!EXPEDITION_PROTO) return false;
-  n=clamp(n||6,1,8); lv=lv||EXP_DATA.niveau_equipe||5;
-  if(typeof menuEl!=="undefined"){menuEl.hidden=true;menuOpen=false}
-  musicSet("battle"); endShown=false; matchMode="ffa"; score.me=0; score.foe=0; FFA.out=[]; FFA.endT=0; FFA.nextT=0; FFA.t=0; FFA.need=1;
-  Object.assign(EXP,{on:true,t:0,end:null,frames:0,fpsMin:999,fpsAvg:0,n});
-  setArena(EXP_DATA.environnement||'prairie');
-  player=makeFighter(EXP_TEAM[0],0,0,false,kitOf(EXP_TEAM[0])); player.side=0; initTeam(player,EXP_TEAM);
-  entities=[player];
-  const pool=EXP_DATA.ennemis;
-  for(let i=0;i<n;i++){
-    const d=pool[i%pool.length], e=makeFighter(d.cle,0,0,true); e.side=1; e.lv=lv;
-    e.kit=d.pool.slice().sort(()=>Math.random()-.5).slice(0,4); entities.push(e);
-  }
-  fighters=entities.filter(e=>e.fighter); foe=fighters[1]; fighters.forEach((e,i)=>{e.col=e===player?FFA_COL[0]:FFA_COL[1]}); FFA.w=fighters.map(()=>0);
-  resetRound();
-  setLevel(player,lv); fighters.forEach(e=>{if(e!==player){e.maxHp=slotMax(e.key,lv); e.hp=e.maxHp}});
-  if(typeof applyKit==="function")applyKit();
-  hideVersus(); introPending=false; const ti=document.getElementById('title'); if(ti)ti.style.display='none';
-  return true;
-}
-function expOut(t){ // un ennemi tombe : vague gagnée quand ils le sont tous ; le joueur tombe : perdue
-  if(t.out||EXP.end)return; t.out=true; t.ko=2.2;
-  const left=fighters.filter(e=>e.side===1&&!e.out).length;
-  if(t===player||!left){EXP.end=t===player?"lose":"win"; if(typeof showBanner==="function")showBanner(t===player?"DÉFAITE":"VAGUE TERMINÉE",t===player?"lose":"win")}
-}
-FX_UPDATERS.push(dt=>{
-  if(!EXP.on||EXP.end||matchMode!=="ffa") return;
-  EXP.t+=dt; EXP.frames++; const f=1/Math.max(dt,1e-3); EXP.fpsMin=Math.min(EXP.fpsMin,f); EXP.fpsAvg+=(f-EXP.fpsAvg)/EXP.frames;
-});
-// Bouton de test, visible seulement avec ?exp dans l'adresse (le jeu publié reste inchangé pour les autres).
-setTimeout(()=>{
-  const g=typeof titleEl!=="undefined"&&titleEl.querySelector(".tgrp"); if(!g||!/[?&]exp\b/.test(location.search)) return;
-  const b=document.createElement("button"); b.type="button"; b.innerHTML="Expédition (test)<small>Vague de 6 ennemis niveau 5, équipe de 3 (prototype)</small>";
-  b.onclick=()=>{EXPEDITION_PROTO=true; titleEl.style.display="none"; expStart(6)};
-  g.appendChild(b);
-},0);
-
 // Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
 const ALAKAZAM_SHEETS={
   idle:{src:"sprites/44864511c692.png",w:32,h:48,dur:[6, 6, 6, 6, 6, 6, 6, 6],loop:true},
@@ -5977,6 +5928,90 @@ const TORTERRA_ANCH={"idle":[[[24,28],[24,28],[24,28],[24,28],[24,28]],[[24,28],
 PORTRAITS.torterra="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAAMFBMVEUA/wAvPyc8bS5PjwdftweP3zdXWV9/h4+utbXl5eVxYDWXdy/Hp193x9fn78evPwCHIQwJAAACIUlEQVQokT3SsY7aQBAG4H2FWUu2wSTS2hTXrtcvQDBPkPMDuDFJpCvcAClQ5MrrBukqMFKQaCLlUtFmaWgPN2mCUvgBaGjTZtY2+S0w+pjdWY9MLtQT3BMuVGfqG4xZdV2TOhVCALwcq1cw8CdbarxQ7jFVVee9cD1f+E8a69SkjlJY5+q0lZhUKXVY/gKG17xu8RIDKAVvZuZvU9fU5AIQm/MZ8uGp7kJgKOwSk4Pz7T8GI16UTTLHuqPxYPRa3KQ/70h72YcWyy0sO3z3cW0uWlzT3p8mZFRsKLS6Mdjyqw5hRZm6MG2azT4BfMY7MWWZeT6Y3RFyS+PIeqBBKFh3hDLDf0nIRkHIwe6sfG4wCMf3xRspixZDv2suUwCwmuWCQVuWAxU8iVPdiFndM4IXTB7NqW5ILKkL85iKMAyjUVpcr1eykLLc4Di1jXHPHYZIKfMUfKOxIOI3DCJ2CPgQkQeT6P1bjXPdIYQAC7E6iiyNeBB8F+ZUF4bhJGKwuhFPU1E+Dxl4uMUjX8OK+JowtP8FFfsXa5vwbsBZf/sXAjZNkzLDSpwojmLGvm/7hjWf2dIm4HJYyHwW+wDHUzJPbNyzApz7VGbG2DlWpzhJYHcjVUW5OoA+0kEdEjPp3TSeGH7wOGMKL2YSrxo8D6pK6SEJ4ZqJvWuwGlT4euKDCcHNuLi1iKbVdaG/d3oNDhpDBfihlNMsxx2dVvf6q8F/RxNndmgip8UAAAAASUVORK5CYII=";
 Object.assign(SPECIES,{torterra:{name:"Torterra",num:389,types:["grass", "ground"],base:{"hp": 95, "atk": 109, "def": 105, "spa": 75, "spd": 85, "spe": 56},sheets:TORTERRA_SHEETS,anch:TORTERRA_ANCH,shadow:[13, 4],body:13,bar:26,hitFrame:3,atkRate:1.0,kit:["quake", "sedge", "rslide", "curse"],style:"melee",pool:["quake", "sedge", "rslide", "megadrain", "seedbomb", "curse", "ihead", "trap", "mud", "sandstorm", "leech"],playable:true}});
 ["torterra"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const FROAKIE_SHEETS={
+  idle:{src:"sprites/c6436c23ea60.png",w:24,h:40,dur:[38, 2, 2, 5, 3, 3, 2],loop:true},
+  walk:{src:"sprites/d237b3b96750.png",w:32,h:40,dur:[4, 6, 4, 6, 6, 4],loop:true},
+  attack:{src:"sprites/62527c23ef7b.png",w:72,h:80,dur:[2, 4, 2, 2, 2, 2, 2, 2, 2, 4],loop:false},
+  hurt:{src:"sprites/e614705e591a.png",w:48,h:56,dur:[2, 8],loop:false},
+  guard:{src:"sprites/d7d1ba011dfd.png",w:24,h:32,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const FROAKIE_ANCH={"idle":[[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]],[[12,24],[12,24],[12,24],[12,24],[12,24],[12,24],[12,24]]],"walk":[[[16,24],[16,25],[16,26],[16,27],[16,27],[16,26]],[[16,24],[16,24],[18,25],[19,26],[20,27],[18,26]],[[16,24],[16,24],[18,24],[19,24],[19,24],[18,24]],[[16,24],[16,24],[18,23],[19,22],[20,21],[18,22]],[[16,24],[16,24],[16,23],[16,22],[16,21],[16,22]],[[16,24],[16,24],[14,23],[13,22],[12,21],[14,22]],[[16,24],[16,24],[14,24],[13,24],[13,24],[14,24]],[[16,24],[16,24],[14,25],[13,26],[12,27],[14,26]]],"attack":[[[36,43],[36,42],[36,44],[36,48],[36,54],[36,62],[37,62],[36,62],[37,62],[36,50]],[[35,43],[34,42],[36,44],[40,48],[46,52],[57,62],[58,61],[57,62],[58,61],[42,50]],[[35,44],[34,44],[36,44],[40,44],[46,44],[54,44],[54,45],[54,44],[54,45],[42,44]],[[35,45],[34,46],[36,43],[40,38],[47,29],[56,19],[57,20],[56,19],[57,20],[42,38]],[[36,45],[36,46],[36,44],[36,40],[36,33],[36,19],[37,19],[36,19],[37,19],[36,38]],[[37,45],[38,46],[36,43],[32,38],[25,29],[16,19],[15,20],[16,19],[15,20],[30,38]],[[37,44],[38,44],[36,44],[32,44],[26,44],[18,44],[18,45],[18,44],[18,45],[30,44]],[[37,43],[38,42],[36,44],[32,48],[26,52],[15,62],[14,61],[15,62],[14,61],[30,50]]],"hurt":[[[24,28],[24,27]],[[20,28],[19,27]],[[20,32],[19,32]],[[20,36],[19,37]],[[24,36],[24,37]],[[28,36],[29,37]],[[28,32],[29,32]],[[28,28],[29,27]]],"guard":[[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20]],[[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20]],[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[13,19],[12,20],[13,19],[12,20],[13,19],[12,20],[13,19],[12,20],[13,19],[12,20]],[[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20]],[[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20]]]};
+PORTRAITS.froakie="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAALVBMVEX///r333/R08zOpz+ho5t/z+dDk8onJzcXP3/397e83Ld5ytdrvNxesNJFaK45NS/QAAAAD3RSTlP////////////////////53ncsAAACcUlEQVR42nWST0gUcRTHP7/fzjSK5s4SRWXq4B8i6JBJXV2iQx3C/i0SBGmFdrLNSIkKloIghVg9lC2xWJRkmCnSwVSyIrAoMDqYFjZaSpLYKKXOLs50mCQieqfv+1zee9/3FT38W5L/wde9fV6XLOpYhhsqRid7AOTTWLrhwWT8BAvlHcD9qjeVtwHRQ9sMuUxmB0k+Mckt+wIS1iAf31ybBBGmsbelHyS+FAq/Xn42BlvCqXUVMQmSRFnKVART7+Aa9gDnbZDkRBL9xA8bEd8ienGzkwISwmEWg+p81A5juLvoBknUumVexAVMYA5AukRBZRDXQLMGiZiuK2cBWOpHRIE+YHZW+gl7d7vonvD7FWvZmiU96gkLSZkOSZ+BOKVDHhggER1HcNhHWUs1+t4MBPhCPz92L1nvNqtdciBvRjyy9q9H4mpqkETcn2jt/Nb60JQaSAR2DWjDmeZImvkhnL8SJJumqD0qqywHx8GZL5kGxXfXYuGg+gmJnEOqxY0/gkoyFbgKhNq1ULu2O8oqVwypZ72dtUzVzFSHobFLDK1wp6J/fb163Dd9wE7fWfTiD6vNfiuaRisB+I4tmldM1QbsliyZHvDMCQTyOgNpTQEa9qD4eqwaC6BuYwV2gvrVgyiY4/hLwc4pAW2+Xs8CaRnOAxFLvaKVgt0Q0wsBERtpRxpF3mTxqigfUNxjtDufnR1xoICJSgtQeO5AiYgzCubp7ZaXTxfUk2OGAzjaSPB3aAswzDNbAWRCvQOggBPSrq87TptJQbkzN26BAnJelVy4lBFPCYl77wtyQNxg4lDGeEZEvjS1yUT/tnMyyC8WbuY8tvlbXQAAAABJRU5ErkJggg==";
+Object.assign(SPECIES,{froakie:{name:"Grenousse",num:656,types:["water"],base:{"hp": 41, "atk": 56, "def": 40, "spa": 62, "spd": 44, "spe": 71},sheets:FROAKIE_SHEETS,anch:FROAKIE_ANCH,shadow:[7, 4],body:11,bar:22,hitFrame:4,atkRate:1.0,kit:["hydrocanon", "rslide", "wpulse", "tidal"],style:"range",pool:["hydrocanon", "rslide", "tidal", "tun", "spikes", "icebeam", "qatk", "tspikes", "blizzard", "riposte", "decoy", "wpulse"],playable:false,exp:true}});
+["froakie"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const FROGADIER_SHEETS={
+  idle:{src:"sprites/529cac9f49c9.png",w:40,h:40,dur:[5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 3, 4, 3, 2],loop:true},
+  walk:{src:"sprites/273e59816bd9.png",w:32,h:48,dur:[6, 6, 6, 6],loop:true},
+  attack:{src:"sprites/a0c2d29d283c.png",w:72,h:72,dur:[2, 2, 2, 2, 2, 1, 1, 2, 2, 2, 2, 1, 2],loop:false},
+  hurt:{src:"sprites/2977148f6ca5.png",w:40,h:56,dur:[2, 8],loop:false},
+  guard:{src:"sprites/f92e73d5794c.png",w:40,h:40,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const FROGADIER_ANCH={"idle":[[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]],[[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24],[20,24]]],"walk":[[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]],[[16,28],[16,28],[16,28],[16,28]]],"attack":[[[36,39],[36,38],[36,38],[36,38],[36,38],[36,40],[36,44],[36,57],[37,57],[36,57],[37,57],[36,46],[36,43]],[[35,39],[34,38],[34,38],[34,38],[34,38],[36,40],[40,44],[53,57],[54,57],[53,57],[54,56],[42,46],[39,43]],[[35,40],[34,40],[34,40],[34,40],[34,40],[36,40],[40,40],[53,40],[54,40],[53,40],[54,40],[42,40],[39,40]],[[35,41],[34,42],[34,42],[34,42],[34,42],[36,40],[40,36],[53,23],[54,23],[53,23],[54,24],[42,34],[39,37]],[[36,41],[36,42],[36,42],[36,42],[36,42],[36,40],[36,36],[36,23],[37,23],[36,23],[37,23],[36,34],[36,37]],[[37,41],[38,42],[38,42],[38,42],[38,42],[36,40],[32,36],[19,23],[18,23],[19,23],[18,24],[30,34],[33,37]],[[37,40],[38,40],[38,40],[38,40],[38,40],[36,40],[32,40],[19,40],[18,40],[19,40],[18,40],[30,40],[33,40]],[[37,39],[38,38],[38,38],[38,38],[38,38],[36,40],[32,44],[19,57],[18,57],[19,57],[18,56],[30,46],[33,43]]],"hurt":[[[20,30],[20,29]],[[18,30],[17,29]],[[18,32],[17,32]],[[18,34],[17,35]],[[20,34],[20,35]],[[22,34],[23,35]],[[22,32],[23,32]],[[22,30],[23,29]]],"guard":[[[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24]],[[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24]],[[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24]],[[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24]],[[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24]],[[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24]],[[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24]],[[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24]]]};
+PORTRAITS.frogadier="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAAKlBMVEX////x55Hn97ev368fNEl3x9dtt9tSa5keV4a22OiOel9jeqFajqIfRHLbqSeTAAAADnRSTlP//////////////////2jCM0UAAAKiSURBVHjandFZSBRxAMfx7/xnPMaS7ACzWuwCS7MmLXzokg6KMhEqjMgDCnSJajBNLF+CSCiIIcvYQoiiYjtoiUyDrN3sYsuj48FIzVY6SGvXthzazZ0eKnqop36Pn8fvT9rA3xP8L8bq/0BzNKD0AtS6FedPtHp6QVoHqKlj26c/AECa+TaA4oPYmPg9lJbpAFbWwwDK7A60uILu1bsnRgCk78fzkS92Tdl0xcw/tSuUZm8EKU24kWfExQcHtzTnn8zQ1XmdSKmvRrwXsq+v5GyF5K28bNS/0dCiCnsRzE7BTMyTvJXXirr6sH86DRKOEqi7mo2l2VSzTCzRkgskVBPU5QtylDML6wxTcQW/3RaYDgck5iiu+LspqDqoiDq7nO4wqWrIuTdyme46xshsFO/C1uFnRnN45edkz5dw2AQsxakex9FhOnZOoLplPjfcSxgUcgro6cb5PZmakyxAco8SB3UwI648GdnyQDgKMyAyAVC3N4MGUJOX8Lv8Go5+JIQblArx5w7z6EcAGrKaEa2ASpTF2/1DJOSBaiGiDTAUHcbFHTZU3Qr0SyjDLxxA5X1PkuYlvOLT0lAbsi1dwI6+bee+l6/2MljsfzStW9hkG8Oh5VVz/VVOrEVl3NlnCF//4ak9dCbWXkg9hNKWM7nWdEvztCrMWbGLY4ywi2BbY32ib0Aq3Zx0wTPeuXdpzQIIjogrf66H5DEPg0MfUm+uP1Fd/25HT8a9wpiMdyI6/LU9FM2uSTWrkgY8LcmN5hG3kt1U1C/57OnXFzVx91gJPB1AesyJyPxwQOna+mTOyQ6sACCqQ9jpyH75POK/1e73BwBE7gFukEJFWkLXpcCvYnLuUFRx983Ih436suHeX6gwK0tfa923WdGR17/b/gDa4Qq+hPXyTAAAAABJRU5ErkJggg==";
+Object.assign(SPECIES,{frogadier:{name:"Croâporal",num:657,types:["water"],base:{"hp": 54, "atk": 63, "def": 52, "spa": 83, "spd": 56, "spe": 97},sheets:FROGADIER_SHEETS,anch:FROGADIER_ANCH,shadow:[11, 4],body:11,bar:22,hitFrame:0,atkRate:1.0,kit:["hydrocanon", "rslide", "tidal", "sdance"],style:"range",pool:["hydrocanon", "rslide", "tidal", "icepunch", "tun", "spikes", "icebeam", "qatk", "tspikes", "blizzard", "decoy", "sdance"],playable:false,exp:true}});
+["frogadier"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const GROVYLE_SHEETS={
+  idle:{src:"sprites/51d6b60c6fc6.png",w:32,h:40,dur:[18, 12],loop:true},
+  walk:{src:"sprites/aa7f810663c0.png",w:32,h:56,dur:[8, 6, 6, 6, 8],loop:true},
+  attack:{src:"sprites/50c89c7ae6f7.png",w:64,h:72,dur:[4, 2, 4, 2, 2, 2, 2, 2, 2, 4, 2],loop:false},
+  hurt:{src:"sprites/6ffcf2852e9e.png",w:40,h:48,dur:[2, 8],loop:false},
+  guard:{src:"sprites/4d9f8a26e946.png",w:40,h:40,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const GROVYLE_ANCH={"idle":[[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]],[[16,24],[16,24]]],"walk":[[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]],[[16,32],[16,32],[16,32],[16,32],[16,32]]],"attack":[[[32,40],[32,39],[32,38],[32,40],[32,44],[32,50],[32,62],[33,62],[32,62],[33,62],[32,46]],[[32,40],[31,39],[30,38],[32,40],[34,42],[38,46],[47,55],[48,54],[47,55],[48,54],[40,48]],[[32,40],[31,40],[30,40],[30,36],[32,36],[37,37],[42,40],[42,41],[42,40],[42,41],[38,40]],[[32,40],[31,41],[30,42],[32,40],[36,36],[40,32],[47,24],[48,25],[47,24],[48,25],[38,31]],[[32,40],[32,41],[32,42],[32,40],[32,37],[32,32],[32,22],[33,22],[32,22],[33,22],[32,34]],[[32,40],[33,41],[34,42],[32,40],[28,36],[24,32],[17,24],[16,25],[17,24],[16,25],[26,31]],[[32,40],[33,40],[34,40],[34,36],[32,36],[27,37],[22,40],[22,41],[22,40],[22,41],[26,40]],[[32,40],[33,39],[34,38],[32,40],[30,42],[26,46],[17,55],[16,54],[17,55],[16,54],[24,48]]],"hurt":[[[20,26],[20,25]],[[18,26],[17,25]],[[18,28],[17,28]],[[18,30],[17,31]],[[20,30],[20,31]],[[22,30],[23,31]],[[22,28],[23,28]],[[22,26],[23,25]]],"guard":[[[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24]],[[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24]],[[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24]],[[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24]],[[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24],[21,24],[20,24]],[[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24],[21,23],[20,24]],[[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24],[20,23],[20,24]],[[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24],[19,23],[20,24]]]};
+PORTRAITS.grovyle="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAALVBMVEX33y/vVyfn77fXRy/Hpxe374+f38d/x993t19fl19Pb18/Rz83Ny+3Nyef12cEg4dHAAAAD3RSTlP////////////////////53ncsAAACM0lEQVR42mWSTU9TQRSGn5mWhhronVZFIVFuqxuIQapRFqhB/oPGlSmKJi6MdaMuWbrQpJq4QF00Go2w4hdoRTYaEj5WmlC4la+QVJg2pG3q5Y6LW/zA1Tl5cj7eeeeI+wBwvNURFyb8HNmICwnMaiMncK6RuG3UI/rfSvLxkte7px1vWVlyL2TGZv4/uBMti91F/X4YjFZWmlX74a+1Wq0WLAFwqfj9LDscfH/SAaQxxhjZsjY8nVd6fb5Xa639mYHZFCldLq9WVwCCANiVajrcXUAwuODsbj9CGlKbPSpzR/2WpMhQxaDCngLkAIBVD8M9s6yzz+y/xGczgCPqOQ1I5UP1NvOTHYVyXdcNqhxwnY7Nb8YuKAhOQbDoGxrl8f6oswSuC3Ijl8vlSmA+9s2ltlIaQPpvR+B1zYW2QgMKkGYEgLK5+NJUb1TTAEHvmF969FZzVxoCGpBmG7CEsGsPPwPCd37ZHynyDzoy0ORDMwJG2DFrehKoAkjhnQCEdzkeGt79Lqn4QUCTyl7rz/qGgYRCDlStXNm/LwxhDQQVFJu0Rbt95l12FKYAGRflxaSOMfSU4W6oA8hJYUXulipOpX2yLZ7ltQPIV52qpKXtMbQxLt3nZAC5nSiZVnUVCC+VIrbyxQ92xmZOOThe/uajZOG0D7cTVnkNEBN8eZI8ACAStLz49MZBdo2d588p9nxIOgDr46NjvQ0YuC1CACOLi9ahWfxb6puJRQCbRPFKo/0X+cLPJzPHuQUAAAAASUVORK5CYII=";
+Object.assign(SPECIES,{grovyle:{name:"Massko",num:253,types:["grass"],base:{"hp": 50, "atk": 65, "def": 45, "spa": 85, "spd": 65, "spe": 95},sheets:GROVYLE_SHEETS,anch:GROVYLE_ANCH,shadow:[9, 4],body:11,bar:22,hitFrame:5,atkRate:1.0,kit:["rslide", "leafblade", "megadrain", "sdance"],style:"range",pool:["rslide", "leafblade", "awave", "tun", "qatk", "decoy", "sdance", "megadrain", "seedbomb"],playable:false,exp:true}});
+["grovyle"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const PIGNITE_SHEETS={
+  idle:{src:"sprites/29a8dbf3ec67.png",w:32,h:40,dur:[40, 3, 3, 3, 3, 3, 3, 3],loop:true},
+  walk:{src:"sprites/aa9c886bb658.png",w:32,h:40,dur:[6, 10, 6, 10],loop:true},
+  attack:{src:"sprites/61a2c8cc04fc.png",w:72,h:72,dur:[2, 8, 1, 1, 1, 2, 2, 2, 2, 2],loop:false},
+  hurt:{src:"sprites/5ef3ff39925f.png",w:48,h:64,dur:[2, 8],loop:false},
+  guard:{src:"sprites/f272550107c4.png",w:32,h:40,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const PIGNITE_ANCH={"idle":[[[16,24],[16,24],[15,24],[16,24],[15,24],[16,24],[15,24],[16,24]],[[16,24],[16,24],[15,25],[16,24],[15,25],[16,24],[15,25],[16,24]],[[16,24],[16,24],[16,25],[16,24],[16,25],[16,24],[16,25],[16,24]],[[16,24],[16,24],[17,25],[16,24],[17,25],[16,24],[17,25],[16,24]],[[16,24],[16,24],[17,24],[16,24],[17,24],[16,24],[17,24],[16,24]],[[16,24],[16,24],[15,25],[16,24],[15,25],[16,24],[15,25],[16,24]],[[16,24],[16,24],[16,25],[16,24],[16,25],[16,24],[16,25],[16,24]],[[16,24],[16,24],[17,25],[16,24],[17,25],[16,24],[17,25],[16,24]]],"walk":[[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24],[16,24]]],"attack":[[[36,39],[36,38],[36,40],[36,44],[36,50],[36,60],[37,60],[36,60],[37,60],[36,46]],[[35,39],[34,38],[36,40],[40,44],[46,50],[56,60],[57,59],[56,60],[57,59],[42,46]],[[35,40],[34,40],[36,40],[40,40],[46,40],[57,40],[57,41],[57,40],[57,41],[42,40]],[[35,41],[34,42],[36,39],[41,34],[48,27],[55,21],[56,22],[55,21],[56,22],[42,34]],[[36,41],[36,42],[36,40],[36,36],[36,29],[36,21],[37,21],[36,21],[37,21],[36,34]],[[37,41],[38,42],[36,39],[31,34],[24,27],[17,21],[16,22],[17,21],[16,22],[30,34]],[[37,40],[38,40],[36,40],[32,40],[26,40],[15,40],[15,41],[15,40],[15,41],[30,40]],[[37,39],[38,38],[36,40],[32,44],[26,50],[16,60],[15,59],[16,60],[15,59],[30,46]]],"hurt":[[[24,32],[24,31]],[[20,32],[19,31]],[[20,36],[19,36]],[[20,40],[19,41]],[[24,40],[24,41]],[[28,40],[29,41]],[[28,36],[29,36]],[[28,32],[29,31]]],"guard":[[[17,24],[16,24],[17,24],[16,24],[17,24],[16,24],[17,24],[16,24],[17,24],[16,24]],[[17,23],[16,24],[17,23],[16,24],[17,23],[16,24],[17,23],[16,24],[17,23],[16,24]],[[16,23],[16,24],[16,23],[16,24],[16,23],[16,24],[16,23],[16,24],[16,23],[16,24]],[[15,23],[16,24],[15,23],[16,24],[15,23],[16,24],[15,23],[16,24],[15,23],[16,24]],[[17,24],[16,24],[17,24],[16,24],[17,24],[16,24],[17,24],[16,24],[17,24],[16,24]],[[17,23],[16,24],[17,23],[16,24],[17,23],[16,24],[17,23],[16,24],[17,23],[16,24]],[[16,23],[16,24],[16,23],[16,24],[16,23],[16,24],[16,23],[16,24],[16,23],[16,24]],[[15,23],[16,24],[15,23],[16,24],[15,23],[16,24],[15,23],[16,24],[15,23],[16,24]]]};
+PORTRAITS.pignite="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAAKlBMVEXxnVTv97fYX1a/37eJiYl/x996QTFmV1Y8JRL7+vv25nrbmkrGcDxRPj4WoQT/AAAADnRSTlP//////////////////2jCM0UAAAIpSURBVHjaVdLBSxRhGMfx7/vu66DtgHsQAinZtCCCSGyLNYMmWSvNZAi3ixLjIekP2FMFUnSwS0R46uIELQgKrbTsaaEhSIS28hQRCYt58DjiRDmjOx1m3bX39L4ffs/7vrzPK7JAbEZbWANiM6/XASQA2CHABTta1ZFxIKzPD9AHUCbWf0lcmiNCjbwBLtpSE/cLFsAQiMPlGiEh9S3r+AlLnU9B4ACgiOqDLASFP4kIawAiyPo22sRSLcINIBzPYoOfn2AZQHUBv83FlulX4Ocn3ieA2BHX3R75OXisdPcz7F/0Vl3XlUDHZi6VzixaQDCciK4kMnNA6mkJtIUrVyPsSIE263gDFpAbjvA5IMsrTqZEcGN1IAEKUcoB2bcUW9vFi8uZ6xaKtioARsJeeihO4C2DrMYBWgotJD3xY95kuFpVXUMhEBoYW/rYKItmut+Vvxh1wLsZxxCjhtGWVi83VP9Ivh3YdYsEhqO6yuXlmvg+z9Tp+ks/gfSzo2eLsb37a98GHXRjnf3Z7u5rk7c+9Mo3JXwd/poVSBn+g0uGtSlo/WpPbRn6IwA2rZRergm0x67w5ppNr+wpyQrcS1YapgNSR5vGp6EO2NIBuG1TibpbgXynwoeg0An6QTjok0iTd919dvOknh0JBOfYSTYxjEtsitvldr9hPkXJKcL4nUJfMymk9AEZJt1DP3ZSShNBgUQDbeHF1AAnY8fPfOwBuxfgy1jbPxKtuQxJ2mZdAAAAAElFTkSuQmCC";
+Object.assign(SPECIES,{pignite:{name:"Grotichon",num:499,types:["fire", "fighting"],base:{"hp": 90, "atk": 93, "def": 55, "spa": 70, "spd": 55, "spe": 55},sheets:PIGNITE_SHEETS,anch:PIGNITE_ANCH,shadow:[9, 4],body:11,bar:22,hitFrame:3,atkRate:1.0,kit:["sedge", "rslide", "heat", "curse"],style:"melee",pool:["sedge", "rslide", "heat", "firering", "flame", "tun", "tackle", "curse", "decoy", "ccombat"],playable:false,exp:true}});
+["pignite"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const TEPIG_SHEETS={
+  idle:{src:"sprites/220a0d62298d.png",w:24,h:48,dur:[40, 2, 3, 4, 3, 2],loop:true},
+  walk:{src:"sprites/0754a3a8795f.png",w:24,h:32,dur:[6, 10, 6, 10],loop:true},
+  attack:{src:"sprites/0ea437e466a7.png",w:64,h:64,dur:[4, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4],loop:false},
+  hurt:{src:"sprites/3f70ae98c9ae.png",w:40,h:56,dur:[2, 8],loop:false},
+  guard:{src:"sprites/1eb93914bc12.png",w:24,h:24,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const TEPIG_ANCH={"idle":[[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]],[[12,28],[12,28],[12,28],[12,28],[12,28],[12,28]]],"walk":[[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]],[[12,20],[12,20],[12,20],[12,20]]],"attack":[[[32,36],[32,35],[32,34],[32,36],[32,40],[32,46],[32,54],[33,54],[32,54],[33,54],[32,42]],[[32,36],[31,35],[30,34],[32,36],[36,40],[42,46],[50,54],[51,53],[50,54],[51,53],[38,42]],[[32,36],[31,36],[30,36],[32,36],[36,36],[42,36],[50,36],[50,36],[50,36],[50,36],[38,36]],[[32,36],[31,37],[30,38],[32,35],[36,32],[42,26],[50,18],[51,19],[50,18],[51,19],[38,30]],[[32,36],[32,37],[32,38],[32,36],[32,32],[32,26],[32,18],[33,18],[32,18],[33,18],[32,30]],[[32,36],[33,37],[34,38],[32,35],[28,32],[22,26],[14,18],[13,19],[14,18],[13,19],[26,30]],[[32,36],[33,36],[34,36],[32,36],[28,36],[22,36],[14,36],[14,36],[14,36],[14,36],[26,36]],[[32,36],[33,35],[34,34],[32,36],[28,40],[22,46],[14,54],[13,53],[14,54],[13,53],[26,42]]],"hurt":[[[20,28],[20,27]],[[16,28],[15,27]],[[16,32],[15,32]],[[16,36],[15,37]],[[20,36],[20,37]],[[24,36],[25,37]],[[24,32],[25,32]],[[24,28],[25,27]]],"guard":[[[13,16],[12,16],[13,16],[12,16],[13,16],[12,16],[13,16],[12,16],[13,16],[12,16]],[[13,16],[12,17],[13,16],[12,17],[13,16],[12,17],[13,16],[12,17],[13,16],[12,17]],[[12,15],[12,16],[12,15],[12,16],[12,15],[12,16],[12,15],[12,16],[12,15],[12,16]],[[11,15],[12,16],[11,15],[12,16],[11,15],[12,16],[11,15],[12,16],[11,15],[12,16]],[[13,16],[12,16],[13,16],[12,16],[13,16],[12,16],[13,16],[12,16],[13,16],[12,16]],[[13,15],[12,16],[13,15],[12,16],[13,15],[12,16],[13,15],[12,16],[13,15],[12,16]],[[12,15],[12,16],[12,15],[12,16],[12,15],[12,16],[12,15],[12,16],[12,15],[12,16]],[[11,16],[12,17],[11,16],[12,17],[11,16],[12,17],[11,16],[12,17],[11,16],[12,17]]]};
+PORTRAITS.tepig="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAALVBMVEX////+nSn19VHv97ftgyGy3cl3x9dWPz9BKy7/dGzRYh2nsLeQTCZolIwxHAye6N0EAAAAD3RSTlP////////////////////53ncsAAACHElEQVR42k2STWgTURSFv3kzprGFdrIQRTEEqSDqYty5UkFd6CpS7EbFtOjQgsVCaYMiNQpuFEqKG4kKiUhX/gQEfzZSCpKFBEaLKGLDI4hioGRUYttJO+PiTZre5ffOe/fc+45mE91OHW3cy05cQZUAwCQoaORowyCFBjVY2gBXgBjBjMnohuv/gBgu6yVc172eAmKdA+CqMnpCKcwQ9Cil1g90TKvGdjCs4GmA6DTkgMj5obbP5cvkoF7/VbgHoO8D4NYjqAONbxdmW8poJwQA1LatX7+xbjEoZFqwG3CBkzlqZgijyxBJw6aBWDGIhlBb+MG5skkDPD6EMJPJRN4dP8Ap0LRkBkMC3c7mh1vou5Y0Iamb0ohDl49o8Grlswkk/w7Fxf091SnAoXRGfcInURXZsTcVCWC2VhzxxULWlx5ATVldyYLxRfeV4DC/nw+AtgMMUhKJ/54THUcPuZ1TYhUEliTP0v5i10hpbvxpfXEXiKiHh8VI6VKZ0m4HPt7G0NWLazlAjy9a8/iITACEJyRIiOYRxCwAVisFxSZ5xDDkQVd0zoTvEkNfA0C35l+mnQePofEa8VUjpDfv3PX6z8pRMGRvIuyyPDl5zEhslaD/Ofjs4mxo622l2nfVBQNptuNm9+6UgMAfLLJWDtmqp5z5zQkcHLBt8STth1n6qVZrQ3Ovo2aIUBGtpCXy4WAp/CoWDIJ4Efb7DzpvvLfPmKJSAAAAAElFTkSuQmCC";
+Object.assign(SPECIES,{tepig:{name:"Gruikui",num:498,types:["fire"],base:{"hp": 65, "atk": 63, "def": 45, "spa": 45, "spd": 45, "spe": 45},sheets:TEPIG_SHEETS,anch:TEPIG_ANCH,shadow:[7, 4],body:13,bar:26,hitFrame:5,atkRate:1.0,kit:["heat", "firering", "flame", "curse"],style:"melee",pool:["heat", "firering", "flame", "sucker", "tun", "tackle", "curse", "decoy"],playable:false,exp:true}});
+["tepig"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
+buildMenu();
+
+// Généré par l'outil d'ajout de l'éditeur de données : ne pas modifier à la main, utiliser l'éditeur.
+const TREECKO_SHEETS={
+  idle:{src:"sprites/ced798519d9a.png",w:32,h:40,dur:[40, 4, 2],loop:true},
+  walk:{src:"sprites/ca2e43482547.png",w:32,h:32,dur:[6, 10, 6, 10],loop:true},
+  attack:{src:"sprites/6aaf0abdef7f.png",w:64,h:72,dur:[2, 4, 1, 1, 1, 2, 2, 2, 2, 2],loop:false},
+  hurt:{src:"sprites/425338b8cb01.png",w:48,h:64,dur:[2, 8],loop:false},
+  guard:{src:"sprites/7c85af012841.png",w:24,h:32,dur:[2, 2, 2, 2, 2, 2, 2, 2, 2, 2],loop:true},
+};
+const TREECKO_ANCH={"idle":[[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]],[[16,24],[16,24],[16,24]]],"walk":[[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]],[[16,20],[16,20],[16,20],[16,20]]],"attack":[[[32,39],[32,38],[32,40],[32,44],[32,50],[32,58],[33,58],[32,58],[33,58],[32,46]],[[31,39],[30,38],[32,40],[36,44],[42,50],[50,58],[51,57],[50,58],[51,57],[38,46]],[[31,40],[30,40],[32,40],[36,40],[42,40],[50,40],[50,41],[50,40],[50,41],[38,40]],[[31,41],[30,42],[32,39],[36,34],[43,28],[50,17],[51,18],[50,17],[51,18],[38,34]],[[32,41],[32,42],[32,40],[32,36],[32,29],[32,19],[33,19],[32,19],[33,19],[32,34]],[[33,41],[34,42],[32,39],[28,34],[21,28],[14,17],[13,18],[14,17],[13,18],[26,34]],[[33,40],[34,40],[32,40],[28,40],[22,40],[14,40],[14,41],[14,40],[14,41],[26,40]],[[33,39],[34,38],[32,40],[28,44],[22,50],[15,59],[14,58],[15,59],[15,59],[26,46]]],"hurt":[[[24,34],[24,33]],[[22,34],[21,33]],[[22,36],[21,36]],[[22,38],[21,39]],[[24,38],[24,39]],[[26,38],[27,39]],[[26,36],[27,36]],[[26,34],[27,33]]],"guard":[[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20]],[[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20]],[[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20],[13,20],[12,20]],[[13,19],[12,20],[13,19],[12,20],[13,19],[12,20],[13,19],[12,20],[13,19],[12,20]],[[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20],[12,19],[12,20]],[[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20],[11,19],[12,20]]]};
+PORTRAITS.treecko="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoBAMAAAB+0KVeAAAALVBMVEX331/n969nl4/P57fnf4/HX3e/11ev17ent1efT1+Pz8eHn093x9dnf1c3Pz/480AqAAAAD3RSTlP////////////////////53ncsAAACOklEQVR42k2STUhUURiGn/vnDE7hYNkiCW5SJMaQqKUQWqsiIZJIkRYyKEQLdy4yjGn6D9rYzl1WJJEUNwQ3KQ4kVJQxo6GTP3UZaCXZGM4Qc889t8Wdyc7y4eH9OO/3KZ8AoDJtDW70JtpGAVSf5cstp3XPzKNJAHQf9neDIz5+FfxnTtsYzrDJcHQb5h2gw91luolt2J8EcFScPIAqpZQSC4BUPatSSqlnAKaHAINkLVZbycy7/ji7BmJSShUgJH3ohnETpUH7Ryk9F0BPArdbDkZeAa6GJAl6BBiI9dE4BFIFN1I0T2gjma54HFJA0s90MJdH2tMmgAGgCiF2ZHkcfH82CoAQQuizEGgBjZABc2hbs6ALCABquACswar4Vx0QBCQki98E+zpoDgDfioWEagrRBwyMAhRu1vumqclgzqy3AaQhpdSB5bA5dl+r86PHioU4akP6Ul8MgHEb0Cb2vfMq9p6+NeWLi0fmQbvR9jv5q2f3zrQPD+vzoFac7GUtnGruNLf3qCpbVeQX3M3Gy3dM6CpdSAGi04xjNNjMmS1PS36u8ruYetNospKp80MMkA/lBcTEeZOuD4Dyc3MhCmVfNq55uWdQOGODsuEdAFhNLc20t3YjbUD3lCc9EPk8HyyvOlZsUf3RdDzKoRfjJNaPlqpVq2m6ok7GwBNliyWoWJwaGjHM2qz3cqmjCLPVeBeHBzDh7fN7RXhOsV5fHbQyHqzH7/pHpeYIlQc6s1ocROBPMwB/AVzs5jiXoGzdAAAAAElFTkSuQmCC";
+Object.assign(SPECIES,{treecko:{name:"Arcko",num:252,types:["grass"],base:{"hp": 40, "atk": 45, "def": 35, "spa": 65, "spd": 55, "spe": 70},sheets:TREECKO_SHEETS,anch:TREECKO_ANCH,shadow:[9, 4],body:11,bar:22,hitFrame:4,atkRate:1.0,kit:["rslide", "megadrain", "seedbomb", "sdance"],style:"range",pool:["rslide", "tun", "leech", "qatk", "decoy", "sdance", "megadrain", "seedbomb"],playable:false,exp:true}});
+["treecko"].forEach(k=>{const sp=SPECIES[k]; sp.stats=statsOf(sp.base); sp.maxHp=Math.round(sp.stats.hp/HP_SCALE); sp.spd=clamp(Math.pow(sp.stats.spe/122,.4),.8,1.1); Object.values(sp.sheets).forEach(s=>{s.img=new Image();if(!SPRITE_LAZY)s.img.src=s.src})});
 buildMenu();
 
 // ===== Équilibrage (passe du 16/10, simulations bot contre bot) =====
@@ -7935,5 +7970,363 @@ beat(); setInterval(beat,60000); document.addEventListener("visibilitychange",be
 addEventListener("pagehide",()=>{try{navigator.sendBeacon(RANKED_API+"/api/online/leave",new Blob([JSON.stringify({sid})],{type:"text/plain"}))}catch(_){}}); // fermeture ou rechargement : retiré du compte tout de suite
 if(typeof setLang==="function"){const sl=setLang; setLang=function(l){const r=sl.apply(this,arguments); draw(); return r}} // le texte suit la langue
 })();
+
+/* ===== Mode Expédition, première version : zone 1 seulement (choix du starter, camp, 3 combats ordinaires + boss de zone, retour au camp) =====
+   Maquettes : UI-EXP01 à UI-EXP04 (canevas « Maquettes UI Aces Arena »). Document de référence : le PDF « Mode Expédition » du propriétaire.
+   Le combat tourne sur le moteur de la mêlée (matchMode "ffa") avec EXP.on : les ennemis sont alliés entre eux (foesOf, c.js) et n'attaquent que le joueur.
+   Ennemis : pool PROVISOIRE (donnees/expedition/proto.json) en attendant les pools du propriétaire. Carte : la Prairie actuelle en attendant ses layouts. */
+const EXP_DATA={"starters":{"_source":"Pokémon Showdown (pokedex.ts, text/fr/pokedex.ts) : numéros, types, noms, niveaux d'évolution. Premier lot du prototype : Arcko, Grenousse, Gruikui.","starters":[{"numero":252,"cle":"treecko","nom":"Arcko","nom_en":"Treecko","types":["grass"],"evolutions":[{"cle":"grovyle","nom":"Massko","niveau":16},{"cle":"sceptile","nom":"Jungko","niveau":36}]},{"numero":656,"cle":"froakie","nom":"Grenousse","nom_en":"Froakie","types":["water"],"evolutions":[{"cle":"frogadier","nom":"Cro-poral","niveau":16},{"cle":"greninja","nom":"Amphinobi","niveau":36}]},{"numero":498,"cle":"tepig","nom":"Gruikui","nom_en":"Tepig","types":["fire"],"evolutions":[{"cle":"pignite","nom":"Grotichon","niveau":17},{"cle":"emboar","nom":"Roitiflam","niveau":36}]}]},"proto":{"_note":"Prototype Expédition (étape 1) : 8 ennemis existants, niveau 5. Pool = capacités accessibles (apprentissage.json) ; 4 tirées au hasard par ennemi à chaque vague. Aucun effet sur le jeu tant que EXPEDITION_PROTO est désactivé.","environnement":"prairie","niveau_equipe":5,"ennemis":[{"cle":"pikachu","nom":"Pikachu","types":["electric"],"niveau":5,"pool":["agility","bbreak","bodyslam","charm","chgbeam","decoy","drainkiss","electroball","endure","facade","fcpunch","fly","gknot","growl","irontail","kofd","lscreen","mkick","mpunch","nplot","protect","qatk","raindance","round","sleeprest","swift","tblaze","tbolt","tera","thief","thndr","thpunch","tidal","tkdn","tun","twave","uproar","wildchg"]},{"cle":"staraptor","nom":"Étouraptor","types":["normal","flying"],"niveau":5,"pool":["aace","acrobatics","agility","aircutter","airslash","bravebird","ccombat","decoy","dedge","dualwingbeat","endure","facade","fly","gimpact","growl","hbeam","heat","hurricane","protect","qatk","raindance","sleeprest","swift","tackle","tera","thief","tkdn","uproar","wingatk"]},{"cle":"sandslash","nom":"Sablaireau","types":["ground"],"niveau":5,"pool":["aace","agility","bbreak","bdoze","bodyslam","curse","decoy","dedge","drillrun","endure","epower","facade","fcblast","fcpunch","fswipe","furycut","gimpact","hbeam","hhorse","irontail","kofd","mclaw","mslap","mud","pjab","protect","psting","quake","round","rslide","rtomb","sandstorm","scl","scorchingsands","sdance","sedge","sleeprest","spikes","stantr","steelroller","stomb","swift","tera","thief","tkdn","trap","tun","xscis"]},{"cle":"luxray","nom":"Luxray","types":["electric"],"niveau":5,"pool":["agility","bodyslam","chgbeam","cray","crunch","decoy","dedge","electroball","endure","facade","fang","gimpact","hbeam","irontail","lscreen","protect","raindance","round","sleeprest","spower","swift","tackle","tblaze","tbolt","tera","thfang","thief","thndr","tkdn","twave","wildchg"]},{"cle":"lapras","nom":"Lokhlass","types":["water","ice"],"niveau":5,"pool":["avalanche","bdoze","blizzard","bodypress","bodyslam","charm","chillingwater","cray","curse","ddance","decoy","dedge","dpulse","drillrun","endure","facade","fsight","gimpact","growl","hbeam","hydrocanon","hypervoice","icebeam","icespike","ihead","irontail","iwind","liquidation","megahorn","outrage","protect","psy","quake","raindance","round","sleeprest","smartstrike","tbolt","tera","thndr","tidal","tkdn","waterfall","whirl","wpulse","zhead"]},{"cle":"nidoking","nom":"Nidoking","types":["poison","ground"],"niveau":5,"pool":["avalanche","bbreak","bdoze","blizzard","bodypress","bodyslam","decoy","dpulse","drillrun","endure","epower","facade","fblast","fcblast","flame","fpunch","gimpact","hbeam","hex","hhorse","icebeam","icepunch","irontail","iwind","megahorn","mkick","mpunch","mud","outrage","pjab","protect","psting","quake","raindance","rockblast","round","rslide","rtomb","sandstorm","sbomb","scl","scorchingsands","sedge","shball","sleeprest","smartstrike","spower","stantr","stomb","tbolt","thief","thndr","thpunch","tidal","trap","tspikes","tun","uproar","whirl"]},{"cle":"scizor","nom":"Cizayox","types":["bug","steel"],"niveau":5,"pool":["aace","acrobatics","agility","aircutter","airslash","assur","awave","bbreak","bpunch","bswing","ccombat","curse","decoy","dedge","dualwingbeat","endure","facade","fcannon","fswipe","furycut","gimpact","hbeam","idef","ihead","kofd","lscreen","mclaw","protect","qatk","raindance","round","sandstorm","sdance","sleeprest","spower","steelbeam","stomb","swift","tblaze","tera","thief","tkdn","wingatk","wsteel","xscis"]},{"cle":"machamp","nom":"Mackogneur","types":["fighting"],"niveau":5,"pool":["assur","bbreak","bdoze","bodyslam","ccombat","decoy","dedge","endure","facade","fblast","fcblast","flame","fpunch","gimpact","hbeam","hhorse","icepunch","kofd","lscreen","lsweep","mkick","mpunch","payb","pjab","protect","quake","raindance","retal","rockblast","round","rslide","rtomb","sedge","sleeprest","spower","stantr","thief","thpunch","tun"]}]},"niveaux":{"treecko":[[1,"leer"],[1,"pound"],[3,"leafage"],[6,"qatk"],[9,"mdrain"],[18,"assur"],[21,"megadrain"],[24,"slam"],[27,"doubleteam"],[30,"energyball"],[33,"screech"],[39,"leafstorm"]],"froakie":[[1,"growl"],[1,"pound"],[5,"watergun"],[8,"qatk"],[10,"lick"],[14,"wpulse"],[18,"smokescreen"],[21,"round"],[29,"smackdown"],[35,"decoy"],[39,"bounce"],[43,"doubleteam"],[48,"hydrocanon"]],"tepig":[[1,"tackle"],[7,"ember"],[9,"endure"],[13,"defensecurl"],[15,"flamecharge"],[19,"smog"],[21,"rollout"],[25,"tkdn"],[27,"heatcrash"],[31,"assur"],[33,"flame"],[37,"headsmash"],[39,"roar"],[43,"flareblitz"]],"grovyle":[[1,"energyball"],[1,"fswipe"],[1,"furycut"],[1,"leafage"],[1,"leer"],[1,"pound"],[1,"qatk"],[1,"xscis"],[9,"mdrain"],[20,"assur"],[25,"megadrain"],[30,"slam"],[35,"doubleteam"],[40,"leafblade"],[45,"screech"],[55,"leafstorm"]],"sceptile":[[1,"leafblade"],[1,"energyball"],[1,"fswipe"],[1,"furycut"],[1,"leafage"],[1,"leer"],[1,"pound"],[1,"qatk"],[1,"shedtail"],[1,"xscis"],[5,"mdrain"],[20,"assur"],[25,"megadrain"],[30,"slam"],[35,"doubleteam"],[42,"screech"],[56,"leafstorm"]],"frogadier":[[1,"growl"],[1,"pound"],[1,"watergun"],[8,"qatk"],[10,"lick"],[14,"wpulse"],[19,"smokescreen"],[23,"round"],[33,"smackdown"],[40,"decoy"],[45,"bounce"],[50,"doubleteam"],[56,"hydrocanon"]],"greninja":[[1,"wshuri"],[1,"growl"],[1,"haze"],[1,"nslash"],[1,"pound"],[1,"qatk"],[1,"watergun"],[10,"lick"],[14,"wpulse"],[19,"smokescreen"],[23,"ssneak"],[28,"spikes"],[33,"aace"],[42,"decoy"],[49,"extrasensory"],[56,"doubleteam"],[68,"hydrocanon"]],"pignite":[[1,"armthrust"],[1,"ember"],[1,"endure"],[1,"tackle"],[13,"defensecurl"],[15,"flamecharge"],[20,"smog"],[23,"rollout"],[28,"tkdn"],[31,"heatcrash"],[36,"assur"],[39,"flame"],[44,"headsmash"],[47,"roar"],[52,"flareblitz"]],"emboar":[[1,"armthrust"],[1,"ember"],[1,"endure"],[1,"hammerarm"],[1,"tackle"],[13,"defensecurl"],[15,"flamecharge"],[20,"smog"],[23,"rollout"],[28,"tkdn"],[31,"heatcrash"],[38,"assur"],[43,"flame"],[50,"headsmash"],[55,"roar"],[62,"flareblitz"]],"pikachu":[[1,"charm"],[1,"growl"],[1,"nplot"],[1,"qatk"],[4,"twave"],[8,"doubleteam"],[12,"electroball"],[24,"agility"],[28,"irontail"],[36,"tbolt"],[40,"lscreen"],[44,"thndr"]],"staraptor":[[1,"ccombat"],[1,"growl"],[1,"qatk"],[1,"tackle"],[1,"wingatk"],[13,"doubleteam"],[28,"aace"],[33,"tkdn"],[41,"agility"],[49,"bravebird"]],"sandslash":[[1,"defensecurl"],[1,"psting"],[9,"rollout"],[12,"furycut"],[18,"bdoze"],[21,"swift"],[31,"stomb"],[41,"tun"],[51,"sdance"],[56,"sandstorm"],[61,"quake"]],"luxray":[[1,"leer"],[1,"tackle"],[12,"fang"],[24,"roar"],[48,"twave"],[56,"crunch"],[80,"wildchg"]],"lapras":[[1,"growl"],[1,"watergun"],[25,"cray"],[30,"wpulse"],[40,"bodyslam"],[45,"icebeam"],[50,"raindance"],[55,"hydrocanon"]],"nidoking":[[1,"megahorn"],[1,"epower"],[1,"leer"],[1,"pjab"],[1,"psting"],[1,"tspikes"]],"scizor":[[1,"bpunch"],[1,"agility"],[1,"airslash"],[1,"fswipe"],[1,"furycut"],[1,"leer"],[1,"qatk"],[1,"wingatk"],[12,"mclaw"],[16,"doubleteam"],[32,"idef"],[36,"ihead"],[40,"xscis"],[44,"sdance"]],"machamp":[[1,"leer"],[12,"lsweep"],[16,"kofd"],[66,"dedge"]]}};
+const XT=(fr,en)=>LANG==="en"?en:fr;
+const EXP_START={money:200,potion:2,revive:1}; // kit de départ du document : 2 Potions + 1 Rappel et une petite somme (montant à tester)
+const EXP_PRICE={potion:100,revive:300}; // ponytail: prix provisoires, la boutique à 5 articles viendra plus tard
+const EXP_ZONE=[ // combats de la zone 1 : vagues normales (nombre d'ennemis), puis vague finale (mini-boss ou boss + renforts)
+  {boss:false,waves:[2,2,3],last:1},{boss:false,waves:[3,3,4],last:2},{boss:false,waves:[4,4,5],last:2},{boss:true,waves:[4,5],last:3}];
+const EXP_FLOOR=[5,7,9,12]; // plancher de niveau des ennemis par combat (courbe indicative : ~20 en fin de zone 1)
+const EXP_RECRUIT=.35;
+const slotMax=(key,lv)=>Math.round(statsAtLv(SPECIES[key].base,lv).hp/HP_SCALE);
+const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne » officielle : niveau n à n³ XP
+const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
+let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
+
+function expMember(key,lv){
+  const learned=movesUpTo(key,lv), kit=learned.slice(-4);
+  return {key,lv,xp:lv*lv*lv,hp:slotMax(key,lv),ko:false,learned,kit:kit.length?kit:["tackle"],active:false};
+}
+const actives=()=>R.team.filter(m=>m.active);
+const avgLv=()=>{const A=actives(); return Math.round(A.reduce((s,m)=>s+m.lv,0)/A.length)};
+const expAlive=()=>fighters.filter(e=>e.side===1&&!e.out);
+
+// ---------- entrée, sortie ----------
+function expOpen(){ // bouton du menu : écran du choix du starter
+  EXPEDITION_PROTO=true; titleEl.hidden=true; menuEl.hidden=true; menuOpen=false;
+  EXP.on=true; EXP.scene="pick"; expHide(); vsT=0; hideVersus(); setArena("prairie");
+  entities=[]; fighters=[]; player=makeEntity("treecko",-99,-99); player.fighter=false; foe=player;
+  expPick("treecko");
+}
+function expQuit(){ expBar(true); EXP.on=false; EXP.scene=null; R=null; expHide(); hideResult(); showTitle() }
+function expBar(on){const b=slotBtns[0]&&slotBtns[0].parentNode; if(b)b.style.display=on?"":"none"}
+function expHide(){ expBar(true); expSide.hidden=true; expWave.hidden=true; expPrompt.hidden=true; endEl.classList.remove("xp") }
+function expScreen(html,cls){ // fenêtre par-dessus le jeu (même habillage que l'écran de fin) ; le jeu est figé tant qu'elle est ouverte
+  endShown=true; endEl.className="xp "+(cls||""); endEl.innerHTML='<div class="ebox xbox">'+html+'</div>'; endEl.hidden=false;
+  return endEl;
+}
+function expClose(){ endShown=false; endEl.hidden=true; endEl.className="" }
+
+// ---------- UI-EXP01 : choix du starter (27 traditionnels, 3 jouables pour l'instant) ----------
+const EXP_GRID=[["Bulbizarre","Salamèche","Carapuce"],["Germignon","Héricendre","Kaiminus"],["treecko","Poussifeu","Gobou"],["Tortipouss","Ouisticram","Tiplouf"],
+  ["Vipélierre","tepig","Moustillon"],["Marisson","Feunnec","froakie"],["Brindibou","Flamiaou","Otaquin"],["Ouistempo","Flambino","Larméléon"],["Poussacha","Chochodile","Coiffeton"]];
+function expPick(sel){
+  const st=EXP_DATA.starters.starters.find(s=>s.cle===sel), sp=SPECIES[sel], kit=movesUpTo(sel,5).slice(-4);
+  const tile=k=>SPECIES[k]?'<button type="button" class="xst'+(k===sel?' on':'')+'" data-k="'+k+'"><img alt="" src="'+(PORTRAITS[k]||"")+'"><span>'+SPECIES[k].name+'</span></button>'
+    :'<button type="button" class="xst off" disabled><i></i><span>'+k+'</span></button>';
+  const el=expScreen('<h2>'+XT("EXPÉDITION","EXPEDITION")+'</h2><small>'+XT("Choisis ton starter. Il part seul au camp, niveau 5, et ne quittera jamais l'équipe.","Pick your starter. It goes to camp alone, level 5, and never leaves the team.")+'</small>'
+    +'<div class="xpick"><div class="xgrid">'+EXP_GRID.map((g,i)=>'<div class="xgen"><b>'+XT("GÉN. ","GEN ")+(i+1)+'</b><div>'+g.map(tile).join("")+'</div></div>').join("")+'</div>'
+    +'<div class="xprev"><img alt="" src="'+(PORTRAITS[sel]||"")+'"><h3>'+sp.name+'</h3><div>'+sp.types.map(t=>typeBadge(t,1)).join("")+' <em>'+XT("Niv. 5","Lv. 5")+'</em></div>'
+    +'<ul>'+kit.map(id=>'<li>'+SPL[id].name+'</li>').join("")+'</ul><small>'+st.evolutions.map(e=>e.nom+' ('+XT("niv. ","lv. ")+e.niveau+')').join(" → ")+'</small></div></div>'
+    +'<small class="xnote">'+XT("Grisés : pas encore prêts.","Greyed out: not ready yet.")+'</small>'
+    +'<div class="ebtn"><button type="button" id="xGo">'+XT("Partir au camp","Go to camp")+'</button><button type="button" id="xBack">'+XT("Menu","Menu")+'</button></div>');
+  el.querySelectorAll(".xst[data-k]").forEach(b=>b.onclick=()=>expPick(b.dataset.k));
+  el.querySelector("#xGo").onclick=()=>expNewRun(sel);
+  el.querySelector("#xBack").onclick=expQuit;
+}
+function expNewRun(key){
+  const s=expMember(key,5); s.active=true; s.starter=true;
+  R={team:[s],money:EXP_START.money,bag:{potion:EXP_START.potion,revive:EXP_START.revive},ci:0,cand:null,beaten:[],zoneBeaten:[],recruited:false};
+  expClose(); expCamp(XT("Bienvenue au camp. Le portail est en haut à droite.","Welcome to camp. The portal is at the top right."));
+}
+
+// ---------- UI-EXP02 : le camp (disposition du schéma du propriétaire, ramenée à la taille de la Prairie actuelle) ----------
+// positions en fraction de la zone jouable (0 à 1), d'après le schéma : boutique en haut à gauche, portail en haut à droite, tableau vert en bas à droite,
+// feu au centre bas, 5 places autour du feu, 3 zones violettes de recrutement (gauche, droite, bas)
+const CAMP={shop:[.13,.12],portal:[.88,.12],board:[.68,.08],moves:[.88,.88],fire:[.45,.62],seats:[[.38,.48],[.53,.5],[.31,.66],[.6,.65],[.45,.82]],
+  zones:[[.03,.4,.17,.95],[.86,.3,.98,.72],[.22,.88,.68,.97]],arrive:[.8,.26]};
+const campXY=p=>[AB.x0+p[0]*(AB.x1-AB.x0),AB.y0+p[1]*(AB.y1-AB.y0)];
+function expCamp(msg){
+  EXP.on=true; EXP.scene="camp"; expClose(); expHide(); setArena("prairie"); OBST.length=0; matchMode="ffa"; endShown=false;
+  entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
+  const st=R.team[0], [ax,ay]=campXY(CAMP.arrive);
+  player=makeFighter(st.key,ax,ay,false,st.kit); player.side=0; player.lv=st.lv; player.maxHp=slotMax(st.key,st.lv); player.hp=st.ko?0:st.hp; player.out=false;
+  entities=[player]; fighters=[player]; foe=player;
+  R.team.slice(1).forEach((m,i)=>{const [x,y]=campXY(CAMP.seats[i]); const e=makeEntity(m.key,x,y); e.m=m; e.lv=m.lv; e.maxHp=slotMax(m.key,m.lv); e.hp=m.ko?0:m.hp; e.dir=dirFromVector(campXY(CAMP.fire)[0]-x,campXY(CAMP.fire)[1]-y); entities.push(e)});
+  if(R.cand){const z=CAMP.zones[R.cand.z], x=AB.x0+(z[0]+z[2])/2*(AB.x1-AB.x0), y=AB.y0+(z[1]+z[3])/2*(AB.y1-AB.y0), e=makeEntity(R.cand.key,x,y); e.cand=true; e.lv=R.cand.lv; e.maxHp=e.hp=slotMax(R.cand.key,R.cand.lv); entities.push(e); R.cand.e=e}
+  if(typeof applyKit==="function")applyKit();
+  musicSet("menu"); expSideDraw(); expSide.hidden=false; expBar(false); if(msg)showLog(msg,3200);
+}
+function campTargets(){ // ce qu'on peut faire au camp, selon la position du joueur
+  const T=[], P=(p,label,act,r)=>{const [x,y]=campXY(p); T.push({x,y,r:r||30,label,act})};
+  P(CAMP.portal,XT("Portail : partir au combat suivant","Portal: go to the next fight"),expDepart,34);
+  P(CAMP.shop,XT("Boutique","Shop"),expShop);
+  P(CAMP.board,XT("Tableau de progression","Progress board"),expBoard);
+  P(CAMP.moves,XT("Tableau des capacités (bientôt)","Move board (coming soon)"),()=>showLog(XT("Le tableau des capacités arrive plus tard.","The move board comes later."),2000));
+  entities.forEach(e=>{if(e.m)T.push({x:e.x,y:e.y,r:24,label:XT("Parler à ","Talk to ")+e.sp.name,act:()=>expTalk(e.m)}); if(e.cand)T.push({x:e.x,y:e.y,r:26,label:XT("Parler à ","Talk to ")+e.sp.name+XT(" (candidat)"," (candidate)"),act:expCandidate})});
+  return T;
+}
+let campNear=null;
+function campTick(){
+  let best=null,bd=1e9; for(const t of campTargets()){const d=Math.hypot(t.x-player.x,(t.y-player.y)/ISO); if(d<t.r+14&&d<bd){bd=d;best=t}}
+  campNear=best; const txt=best?best.label:""; if(expPrompt.dataset.v!==txt){expPrompt.dataset.v=txt; expPrompt.hidden=!best; expPrompt.innerHTML='<b>'+XT("Entrée","Enter")+'</b> '+txt}
+}
+addEventListener("keydown",e=>{if(EXP.on&&EXP.scene==="camp"&&!endShown&&!menuOpen&&e.key==="Enter"&&campNear){e.preventDefault();campNear.act()}});
+function expTalk(m){
+  const sp=SPECIES[m.key], A=actives().length, opts=[];
+  if(m.ko)opts.push('<small>'+XT("K.O. : utilise un Rappel avant de l'échanger.","Fainted: use a Revive before swapping it.")+'</small>');
+  else if(m.active)opts.push('<button type="button" data-a="res">'+XT("Mettre en réserve","Move to reserve")+'</button>');
+  else if(A<3)opts.push('<button type="button" data-a="act">'+XT("Rendre actif","Make active")+'</button>');
+  else actives().filter(x=>!x.starter&&!x.ko).forEach(x=>opts.push('<button type="button" data-a="sw" data-k="'+R.team.indexOf(x)+'">'+XT("Prendre la place de ","Take the place of ")+SPECIES[x.key].name+'</button>'));
+  const el=expScreen('<h2>'+sp.name+'</h2><small>'+XT("Niv. ","Lv. ")+m.lv+' · '+(m.active?XT("actif","active"):XT("réserve","reserve"))+' · '+(m.ko?"K.O.":XT("PV ","HP ")+m.hp+' / '+slotMax(m.key,m.lv))+'</small><small>'+m.kit.map(id=>SPL[id].name).join(" · ")+'</small><div class="ebtn">'+opts.join("")+'<button type="button" data-a="x">'+XT("Fermer","Close")+'</button></div>');
+  el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const a=b.dataset.a;
+    if(a==="res")m.active=false; else if(a==="act")m.active=true; else if(a==="sw"){R.team[+b.dataset.k].active=false; m.active=true}
+    expClose(); expSideDraw()});
+}
+function expCandidate(){
+  const c=R.cand, sp=SPECIES[c.key], full=R.team.length>=6;
+  const el=expScreen('<h2>'+sp.name+'</h2><small>'+XT("Niv. ","Lv. ")+c.lv+' · '+XT("veut rejoindre ton équipe.","wants to join your team.")+'</small>'+(full?'<small>'+XT("Équipe pleine (6 au maximum).","Team full (6 max).")+'</small>':'')
+    +'<div class="ebtn">'+(full?'':'<button type="button" id="xYes">'+XT("Recruter","Recruit")+'</button>')+'<button type="button" id="xNo">'+XT("Refuser","Refuse")+'</button><button type="button" id="xLater">'+XT("Plus tard","Later")+'</button></div>');
+  const y=el.querySelector("#xYes"); if(y)y.onclick=()=>{const m=expMember(c.key,c.lv); m.active=actives().length<3; R.team.push(m); R.recruited=true; R.cand=null; expCamp(sp.name+XT(" rejoint l'équipe !"," joins the team!"))};
+  el.querySelector("#xNo").onclick=()=>{R.cand=null; expCamp()};
+  el.querySelector("#xLater").onclick=()=>expClose();
+}
+function expShop(){ // boutique minimale de la première version : soins et Rappels seulement
+  const row=(k,n,txt)=>'<div class="xrow"><span>'+n+' · ₽ '+EXP_PRICE[k]+'</span><em>'+txt+'</em><button type="button" data-k="'+k+'"'+(R.money<EXP_PRICE[k]?' disabled':'')+'>'+XT("Acheter","Buy")+'</button></div>';
+  const el=expScreen('<h2>'+XT("Boutique","Shop")+'</h2><small>₽ '+R.money+' · '+XT("Prix provisoires","Provisional prices")+'</small>'
+    +row("potion","Potion",XT("rend 20 PV","heals 20 HP"))+row("revive",XT("Rappel","Revive"),XT("réanime à la moitié des PV","revives at half HP"))+'<div class="ebtn"><button type="button" id="xX">'+XT("Fermer","Close")+'</button></div>');
+  el.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>{R.money-=EXP_PRICE[b.dataset.k]; R.bag[b.dataset.k]++; expShop(); expSideDraw()});
+  el.querySelector("#xX").onclick=expClose;
+}
+function expUse(i,k){ // objet utilisé au camp sur un Pokémon choisi
+  const m=R.team[i], mx=slotMax(m.key,m.lv); if(!R.bag[k])return;
+  if(k==="potion"){if(m.ko||m.hp>=mx)return; m.hp=Math.min(mx,m.hp+20)}
+  else{if(!m.ko)return; m.ko=false; m.hp=Math.ceil(mx/2)}
+  R.bag[k]--; if(i===0){player.hp=m.hp} else entities.forEach(e=>{if(e.m===m)e.hp=m.hp});
+  expSideDraw();
+}
+function expBoard(){
+  const steps=EXP_ZONE.map((z,i)=>'<li class="'+(i<R.ci?"done":i===R.ci?"next":"")+'">'+(z.boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(i+1))+'</li>').join("");
+  const el=expScreen('<h2>'+XT("Progression","Progress")+'</h2><ol class="xsteps"><li class="'+(R.ci>0?"done":"next")+'">'+XT("Zone 1","Zone 1")+'</li></ol><ol class="xsteps">'+steps+'</ol><ol class="xsteps"><li>'+XT("Zone 2 : ???","Zone 2: ???")+'</li><li>'+XT("Zone 3 : ???","Zone 3: ???")+'</li><li>'+XT("Zone finale : ???","Final zone: ???")+'</li></ol><div class="ebtn"><button type="button" id="xX">'+XT("Fermer","Close")+'</button></div>');
+  el.querySelector("#xX").onclick=expClose;
+}
+function expDepart(){
+  const s=R.team[0];
+  if(s.ko){ // le starter K.O. bloque le portail
+    if(R.bag.revive||R.money>=EXP_PRICE.revive)return showLog(XT("Ton starter est K.O. : utilise un Rappel (panneau d'équipe ou boutique).","Your starter has fainted: use a Revive (team panel or shop)."),3200);
+    return expRunOver(XT("Ton starter est K.O. et aucun Rappel n'est possible.","Your starter has fainted and no Revive is possible."));
+  }
+  if(!actives().some(m=>!m.ko))return showLog(XT("Aucun Pokémon actif en état de combattre.","No active Pokémon able to fight."),2600);
+  R.cand=null; expFight();
+}
+// panneau d'équipe au camp : argent, sac, PV, objets (en haut à droite, sous le titre du jeu)
+const expSide=document.createElement("div"); expSide.id="xside"; expSide.hidden=true; (document.getElementById("stage")||document.body).appendChild(expSide);
+const expPrompt=document.createElement("button"); expPrompt.type="button"; expPrompt.id="xprompt"; expPrompt.hidden=true; (document.getElementById("stage")||document.body).appendChild(expPrompt);
+expPrompt.onclick=()=>{if(campNear)campNear.act()};
+const expWave=document.createElement("div"); expWave.id="xwave"; expWave.hidden=true; (document.getElementById("stage")||document.body).appendChild(expWave);
+function expSideDraw(){
+  if(!R)return;
+  expSide.innerHTML='<div class="xh"><b>'+XT("Zone 1","Zone 1")+' · '+(EXP_ZONE[R.ci]&&EXP_ZONE[R.ci].boss?XT("boss","boss"):XT("combat ","fight ")+(R.ci+1)+' / 4')+'</b><span>₽ '+R.money+'</span></div>'
+    +R.team.map((m,i)=>{const mx=slotMax(m.key,m.lv), f=m.ko?0:m.hp/mx;
+      return '<div class="xm'+(m.active?' on':'')+(m.ko?' ko':'')+'"><img alt="" src="'+(PORTRAITS[m.key]||"")+'"><div><b>'+SPECIES[m.key].name+'</b> <em>'+XT("niv. ","lv. ")+m.lv+'</em> '+(m.starter?'<u>starter</u>':m.active?'<u>'+XT("actif","active")+'</u>':'<u>'+XT("réserve","reserve")+'</u>')
+        +'<i class="xb"><i style="width:'+Math.round(f*100)+'%"></i></i><small>'+(m.ko?"K.O.":m.hp+' / '+mx)+'</small></div>'
+        +(m.ko?'<button type="button" data-i="'+i+'" data-k="revive"'+(R.bag.revive?'':' disabled')+'>'+XT("Rappel","Revive")+'</button>':'<button type="button" data-i="'+i+'" data-k="potion"'+(R.bag.potion&&m.hp<mx?'':' disabled')+'>Potion</button>')+'</div>'}).join("")
+    +'<div class="xh"><span>Potion × '+R.bag.potion+'</span><span>'+XT("Rappel","Revive")+' × '+R.bag.revive+'</span></div>'
+    +'<button type="button" class="xquit">'+XT("Abandonner la run","Abandon the run")+'</button>';
+  expSide.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>expUse(+b.dataset.i,b.dataset.k));
+  expSide.querySelector(".xquit").onclick=()=>{const el=expScreen('<h2>'+XT("Abandonner ?","Abandon?")+'</h2><small>'+XT("La run sera perdue.","The run will be lost.")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Abandonner","Abandon")+'</button><button type="button" id="xN">'+XT("Annuler","Cancel")+'</button></div>'); el.querySelector("#xY").onclick=expQuit; el.querySelector("#xN").onclick=expClose};
+}
+
+// ---------- UI-EXP03 : combat en vagues ----------
+const EXP_SPAWNS=[[.08,.15],[.5,.06],[.92,.15],[.95,.6],[.92,.92],[.5,.95],[.08,.92],[.05,.55]]; // points d'apparition sur la Prairie (en attendant les layouts)
+function expFight(){
+  R.snap=JSON.stringify({team:R.team,money:R.money,bag:R.bag,ci:R.ci,beaten:R.beaten,zoneBeaten:R.zoneBeaten,recruited:R.recruited}); // instantané d'avant combat (défaite = retour ici)
+  const Z=EXP_ZONE[R.ci];
+  EXP.scene="fight"; EXP.wave=0; EXP.waves=Z.waves.concat([Z.last]); EXP.pause=0; EXP.marks=[]; EXP.beaten=[]; EXP.end=null; EXP.endT=0; EXP.boss=null; EXP.waveFoes=[];
+  expClose(); expHide(); setArena("prairie"); matchMode="ffa"; endShown=false;
+  entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
+  const A=actives(), keys=A.map(m=>m.key), [sx,sy]=[(AB.x0+AB.x1)/2,(AB.y0+AB.y1)/2+10];
+  player=makeFighter(keys[0],sx,sy,false,A[0].kit); player.side=0; player.out=false;
+  initTeam(player,keys,A.map(m=>m.kit));
+  player.team.forEach((s,i)=>{const m=A[i]; s.m=m; s.lv=m.lv; s.maxHp=slotMax(m.key,m.lv); s.hp=m.ko?0:m.hp; s.dead=m.ko});
+  const first=player.team.findIndex(s=>!s.dead); loadSlot(player,first,false); player.lv=player.team[first].lv; player._stK=null;
+  entities=[player]; fighters=[player]; foe=player;
+  if(typeof applyKit==="function")applyKit();
+  musicSet("battle"); showBanner(XT("PRAIRIE","MEADOW"),"win"); expNextWave();
+}
+function expNextWave(){ // 3 secondes de pause, signal des points d'apparition, puis arrivée
+  const n=EXP.waves[EXP.wave], pts=EXP_SPAWNS.slice().sort(()=>Math.random()-.5);
+  const lastWave=EXP.wave===EXP.waves.length-1, Z=EXP_ZONE[R.ci], big=lastWave?1:0, tot=n+big;
+  EXP.marks=[]; for(let i=0;i<tot;i++){const p=pts[i%pts.length]; EXP.marks.push([AB.x0+p[0]*(AB.x1-AB.x0)+(i>=pts.length?14:0),AB.y0+p[1]*(AB.y1-AB.y0)])}
+  EXP.big=big?(Z.boss?"boss":"mini"):null; EXP.pause=3; expWaveDraw();
+}
+function expSpawn(){
+  const pool=EXP_DATA.proto.ennemis, base=Math.max(EXP_FLOOR[R.ci],avgLv());
+  EXP.marks.forEach(([x,y],i)=>{
+    const big=EXP.big&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXP.big==="boss"?5:3):Math.round(rand(-1,1))),2,100);
+    const e=makeFighter(d.cle,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXP.big:null;
+    e.maxHp=Math.round(slotMax(d.cle,lv)*(big?(EXP.big==="boss"?3:2.2):1)); e.hp=e.maxHp;
+    const k=movesUpTo(d.cle,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); e.kit=k.length?k:["tackle"]; // 4 capacités tirées parmi celles de son niveau
+    e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e);
+    entities.push(e); fighters.push(e); if(big)EXP.boss=e;
+  });
+  EXP.marks=[]; expWaveDraw();
+}
+function expWaveCleared(){ // XP après chaque vague : 100 % pour les actifs, 50 % pour la réserve
+  const gained=EXP.waveFoes.reduce((s,e)=>s+Math.round(e.lv*45/7*(e.big?2:1)),0); EXP.waveFoes=[];
+  expSyncBack(); const ups=[];
+  R.team.forEach(m=>{if(m.ko)return; const before=m.lv; m.xp+=Math.round(gained*(m.active?1:.5)); m.lv=lvOfXp(m.xp);
+    if(m.lv>before){const mx0=slotMax(m.key,before), mx=slotMax(m.key,m.lv); m.hp=Math.min(mx,m.hp+mx-mx0); ups.push(SPECIES[m.key].name+" "+XT("niv. ","lv. ")+m.lv);
+      movesUpTo(m.key,m.lv).forEach(id=>{if(!m.learned.includes(id)){m.learned.push(id); if(m.kit.length<4)m.kit.push(id); ups.push(SPL[id].name)}})}});
+  expSyncTo();
+  pops.push({x:player.x,y:player.y-player.sp.body*2-10,t:0,txt:"+"+gained+" XP",col:"#ffe45e"});
+  if(ups.length)showLog(ups.join(" · "),2600);
+}
+function expSyncBack(){ // combattant -> données de run
+  if(!player.team)return; player.team.forEach((s,i)=>{const m=s.m; m.hp=Math.max(0,Math.round(i===player.ti?player.hp:s.hp)); m.ko=s.dead||m.hp<=0; if(m.ko)m.hp=0; m.kit=(i===player.ti?player.kit:s.kit).slice()});
+}
+function expSyncTo(){ // données de run -> combattant (après une montée de niveau)
+  player.team.forEach((s,i)=>{const m=s.m; s.lv=m.lv; s.maxHp=slotMax(m.key,m.lv); s.kit=m.kit.slice(); if(i!==player.ti)s.hp=m.ko?0:m.hp});
+  const s=player.team[player.ti]; player.lv=s.lv; player.maxHp=s.maxHp; player.hp=s.m.ko?0:s.m.hp; player.kit=s.kit.slice(); player._stK=null; if(typeof applyKit==="function")applyKit();
+}
+function expOut(t){ // ennemi éliminé, ou équipe du joueur entièrement K.O.
+  if(t.out||EXP.end)return; t.out=true; t.ko=1.1;
+  if(t===player){EXP.end="lose"; EXP.endT=1.6; showBanner(XT("DÉFAITE","DEFEAT"),"lose"); return}
+  EXP.beaten.push(t.key); (EXP.waveFoes=EXP.waveFoes||[]).push(t); R.money+=8+t.lv*2*(t.big?3:1);
+}
+function expFightTick(dt){
+  if(EXP.end){EXP.endT-=dt; if(EXP.endT<=0){const w=EXP.end; EXP.end=null; w==="win"?expWin():expLose()} return}
+  if(EXP.pause>0){EXP.pause-=dt; if(EXP.pause<=0)expSpawn(); expWaveDraw(); return}
+  if(!expAlive().length){
+    expWaveCleared(); EXP.wave++;
+    if(EXP.wave>=EXP.waves.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else expNextWave();
+  }
+  expWaveDraw();
+}
+function expWaveDraw(){
+  const n=expAlive().length, txt=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.wave+1,EXP.waves.length)+' / '+EXP.waves.length+'</b>'
+    +(EXP.pause>0?' · '+XT("arrivée dans ","incoming in ")+Math.ceil(EXP.pause):' · '+n+XT(" ennemi"+(n>1?"s":"")+" restant"+(n>1?"s":"")," enem"+(n>1?"ies":"y")+" left"));
+  if(expWave.dataset.v!==txt){expWave.dataset.v=txt; expWave.innerHTML=txt} expWave.hidden=!!EXP.end||EXP.wave>=EXP.waves.length; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out));
+}
+
+// ---------- UI-EXP04 : fin de combat ----------
+function expWin(){
+  hideBanner(); expWave.hidden=true; expSyncBack(); R.beaten=R.beaten.concat(EXP.beaten); R.zoneBeaten=R.zoneBeaten.concat(EXP.beaten);
+  const Z=EXP_ZONE[R.ci]; R.ci++;
+  if(R.ci>=EXP_ZONE.length){ // boss de zone vaincu : fin de la première version
+    const el=expScreen('<h2>'+XT("ZONE 1 TERMINÉE","ZONE 1 CLEARED")+'</h2><small>'+XT("Les zones 2 et 3 et la zone finale arrivent plus tard.","Zones 2, 3 and the final zone come later.")+'</small>'+expTeamLines()+'<div class="ebtn"><button type="button" id="xM">Menu</button></div>',"win");
+    el.querySelector("#xM").onclick=expQuit; return;
+  }
+  // recrutement : 30 à 40 % de chances, un seul candidat parmi les vaincus ; offre garantie avant le boss de zone si personne n'a encore rejoint l'équipe
+  const guarantee=EXP_ZONE[R.ci].boss&&!R.recruited, pool=(guarantee?R.zoneBeaten:EXP.beaten).filter(k=>SPECIES[k]);
+  R.cand=pool.length&&(guarantee||Math.random()<EXP_RECRUIT)?{key:pool[Math.floor(Math.random()*pool.length)],lv:avgLv(),z:Math.floor(Math.random()*CAMP.zones.length)}:null;
+  const el=expScreen('<h2>'+XT("VICTOIRE","VICTORY")+'</h2><small>'+(Z.boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+R.ci)+' · '+XT("Prairie","Meadow")+'</small>'+expTeamLines()
+    +'<div class="xrow"><span>'+XT("Argent","Money")+'</span><b>₽ '+R.money+'</b></div>'+(R.cand?'<small>'+XT("Un Pokémon vaincu t'attend au camp…","A defeated Pokémon is waiting at camp…")+'</small>':'')
+    +'<div class="ebtn"><button type="button" id="xC">'+XT("Retour au camp","Back to camp")+'</button></div>',"win");
+  el.querySelector("#xC").onclick=()=>expCamp();
+}
+function expTeamLines(){return R.team.filter(m=>m.active).map(m=>'<div class="xrow"><span>'+SPECIES[m.key].name+'</span><b>'+XT("niv. ","lv. ")+m.lv+'</b><em>'+(m.ko?"K.O.":m.hp+' / '+slotMax(m.key,m.lv)+XT(" PV"," HP"))+'</em></div>').join("")}
+function expLose(){ // retour à l'état d'avant combat, pénalité de 25 % de l'argent
+  hideBanner(); expWave.hidden=true;
+  const S=JSON.parse(R.snap), before=S.money; Object.assign(R,S); R.money=Math.floor(before*.75); R.cand=null;
+  const el=expScreen('<h2>'+XT("DÉFAITE","DEFEAT")+'</h2><small>'+XT("Tous tes actifs sont K.O.","All your active Pokémon fainted.")+'</small>'
+    +'<div class="xrow"><span>'+XT("Équipe, niveaux, XP","Team, levels, XP")+'</span><em>'+XT("remis comme avant ce combat","restored to before this fight")+'</em></div>'
+    +'<div class="xrow"><span>'+XT("Argent","Money")+'</span><b>₽ '+before+' → ₽ '+R.money+'</b><em>− 25 %</em></div>'
+    +'<small>'+XT("Même environnement, autres adversaires.","Same environment, other opponents.")+'</small>'
+    +'<div class="ebtn"><button type="button" id="xR">'+XT("Réessayer","Retry")+'</button><button type="button" id="xA">'+XT("Abandonner la run","Abandon the run")+'</button></div>',"lose");
+  el.querySelector("#xR").onclick=expFight; el.querySelector("#xA").onclick=expQuit;
+}
+function expRunOver(why){
+  const el=expScreen('<h2>'+XT("FIN DE RUN","RUN OVER")+'</h2><small>'+why+'</small>'+expTeamLines()+'<div class="ebtn"><button type="button" id="xM">Menu</button></div>',"lose");
+  el.querySelector("#xM").onclick=expQuit;
+}
+
+// ---------- boucle, rendu, branchements sur le moteur ----------
+FX_UPDATERS.push(dt=>{ if(!EXP.on||endShown||matchMode!=="ffa")return; if(EXP.scene==="fight")expFightTick(dt); else if(EXP.scene==="camp")campTick() });
+function drawCamp(t){ // objets du camp, dessinés au sol sous les Pokémon
+  const R2=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
+  const [sx,sy]=campXY(CAMP.shop); R2(sx-26,sy-20,52,22,"#7a4a26"); R2(sx-28,sy-26,56,8,"#c8553a"); for(let i=0;i<7;i++)R2(sx-28+i*8,sy-26,4,8,"#f0e0c0"); R2(sx-24,sy+2,4,10,"#5a3418"); R2(sx+20,sy+2,4,10,"#5a3418");
+  const [px,py]=campXY(CAMP.portal); for(let r=16;r>3;r-=3){ctx.globalAlpha=.35+.08*Math.sin(t*3+r); ellipseLine(px,py-4,r+Math.sin(t*2+r)*1.5,(r+2)*.6,r%2?"#9fd0ff":"#3f8ae0")} ctx.globalAlpha=1; R2(px-1,py-6,3,3,"#ffffff");
+  const [bx,by]=campXY(CAMP.board); R2(bx-14,by-14,28,14,"#8a5a2e"); R2(bx-12,by-12,24,10,"#c8955a"); R2(bx-11,by+0,3,8,"#5a3418"); R2(bx+8,by+0,3,8,"#5a3418");
+  const [gx,gy]=campXY(CAMP.moves); R2(gx-14,gy-14,28,14,"#2a6a3a"); R2(gx-12,gy-12,24,10,"#5fd068"); R2(gx-11,gy+0,3,8,"#1f4a2a"); R2(gx+8,gy+0,3,8,"#1f4a2a");
+  const [fx0,fy0]=campXY(CAMP.fire); R2(fx0-10,fy0-2,20,4,"#5a3418"); R2(fx0-6,fy0-5,12,3,"#7a4a26");
+  for(let i=0;i<9;i++){const h=4+((Math.sin(t*9+i*1.7)+1)*3)|0; R2(fx0-6+i*1.4,fy0-5-h,2,h,i%3?"#ff9a3a":"#ffe45e")} R2(fx0-1,fy0-9,2,3,"#fff3a0");
+  entities.forEach(e=>{if(e.m&&e.m.ko){ctx.fillStyle="#ff8a8a";ctx.fillRect(Math.round(e.x)-5,Math.round(e.y)+3,10,1)}});
+  if(R&&R.cand){const z=CAMP.zones[R.cand.z]; ctx.globalAlpha=.5+.2*Math.sin(t*3); const x0=AB.x0+z[0]*(AB.x1-AB.x0), y0=AB.y0+z[1]*(AB.y1-AB.y0), x1=AB.x0+z[2]*(AB.x1-AB.x0), y1=AB.y0+z[3]*(AB.y1-AB.y0);
+    for(let x=x0;x<x1;x+=4){R2(x,y0,2,1,"#c060ff");R2(x,y1,2,1,"#c060ff")} for(let y=y0;y<y1;y+=4){R2(x0,y,1,2,"#c060ff");R2(x1,y,1,2,"#c060ff")} ctx.globalAlpha=1}
+}
+function campLabels(){
+  ctx.save(); ctx.textAlign="center"; const fs=Math.max(11,Math.round(PX*3.2)); ctx.font="700 "+fs+"px 'Pixelify Sans',monospace"; ctx.lineWidth=Math.max(3,Math.round(PX*.8)); ctx.lineJoin="round";
+  [[CAMP.shop,XT("Boutique","Shop"),-30],[CAMP.portal,XT("Portail","Portal"),-24],[CAMP.board,XT("Progression","Progress"),-18],[CAMP.moves,XT("Capacités","Moves"),-18],[CAMP.fire,XT("Feu de camp","Campfire"),12]].forEach(([p,txt,dy])=>{
+    const [x,y]=campXY(p), sx=(x-cam.x)*PX, sy=(y+dy-cam.y)*PX; ctx.strokeStyle="#0b0d18"; ctx.strokeText(txt,sx,sy); ctx.fillStyle="#ffe45e"; ctx.fillText(txt,sx,sy)});
+  if(R&&R.cand&&R.cand.e){const e=R.cand.e, sx=(e.x-cam.x)*PX, sy=(e.y-e.sp.body*2-14-cam.y)*PX, txt=XT("Candidat","Candidate"); ctx.strokeText(txt,sx,sy); ctx.fillStyle="#e0b0ff"; ctx.fillText(txt,sx,sy)}
+  ctx.restore();
+}
+setTimeout(()=>{
+  const _dr=drawRings; drawRings=function(){
+    if(!EXP.on)return _dr.apply(this,arguments);
+    const t=performance.now()/1000;
+    if(EXP.scene==="camp")drawCamp(t);
+    if(EXP.scene==="fight"){
+      EXP.marks.forEach(([x,y],i)=>{ctx.globalAlpha=.55+.35*Math.sin(t*8); ellipseLine(x,y,12,7,"#ff5a4a"); ellipseLine(x,y,8,4,EXP.big&&i===0?"#ffb36b":"#ff5a4a"); ctx.globalAlpha=1});
+      fighters.forEach(e=>{if(e.big&&!e.out){ctx.globalAlpha=.35+.2*Math.sin(t*5); ellipseLine(Math.round(e.x),Math.round(e.y)+1,e.sp.body+8,Math.round((e.sp.body+8)*ISO),"#ff9a3a"); ellipseLine(Math.round(e.x),Math.round(e.y)+1,e.sp.body+11,Math.round((e.sp.body+11)*ISO),"#ffd060"); ctx.globalAlpha=1}});
+    }
+    if(player&&player.fighter&&!player.out){const R0=Math.round(player.sp.body*.9)+4; ctx.globalAlpha=.8; ellipseLine(Math.round(player.x),Math.round(player.y)+1,R0,Math.max(2,Math.round(R0*ISO)),"#ffe45e"); ctx.globalAlpha=1}
+  };
+  const _dt=drawTags; drawTags=function(){if(!EXP.on)return _dt.apply(this,arguments); if(EXP.scene==='camp')campLabels()};
+  const _cast=cast; cast=function(e,id){if(EXP.on&&EXP.scene!=="fight"&&e===player)return; return _cast.apply(this,arguments)};
+  const _ls=loadSlot; loadSlot=function(e){_ls.apply(this,arguments); if(EXP.on&&e.team&&e.team[e.ti].lv){e.lv=e.team[e.ti].lv; e._stK=null}};
+  const _sm=startMatch; startMatch=function(){if(EXP.on){EXP.on=false; EXP.scene=null; expHide()} return _sm.apply(this,arguments)};
+  const _hu=hudUpdate; hudUpdate=function(){
+    if(!EXP.on)return _hu.apply(this,arguments);
+    const show=!menuOpen&&player&&player.fighter; hudEl.style.display=show?"":"none"; if(!show)return;
+    hudTile(HT.me,player,0,false); const B=EXP.scene==="fight"&&EXP.boss&&!EXP.boss.out?EXP.boss:null;
+    HT.foe.parentNode.style.display=B?"":"none"; if(B)hudTile(HT.foe,B,0,false);
+  };
+  const _oo=openMenu; openMenu=function(){if(EXP.on){expSide.hidden=true; expPrompt.hidden=true; expWave.hidden=true} return _oo.apply(this,arguments)};
+  // bouton de test, visible seulement avec ?exp dans l'adresse
+  const g=typeof titleEl!=="undefined"&&titleEl.querySelector(".tgrp"); if(!g||!/[?&]exp\b/.test(location.search))return;
+  const b=document.createElement("button"); b.type="button"; b.innerHTML=XT("Expédition (test)<small>Zone 1 : starter, camp, 4 combats en vagues</small>","Expedition (test)<small>Zone 1: starter, camp, 4 wave fights</small>");
+  b.onclick=e=>{e.stopPropagation(); expOpen()}; g.appendChild(b);
+},0);
+{const st=document.createElement("style"); st.textContent=`
+#endscr.xp .xbox{max-width:min(920px,94vw);padding:18px 26px;gap:9px}
+#endscr.xp h2{font-size:40px}
+#endscr.xp small{color:#cfd8ff;font-size:13px}
+.xpick{display:flex;gap:14px;text-align:left}
+.xgrid{display:grid;grid-template-columns:repeat(3,auto);gap:6px}
+.xgen b{display:block;font-size:11px;letter-spacing:2px;color:#ffe45e}
+.xgen>div{display:flex;gap:3px}
+.xst{width:64px;height:66px;background:#13207a;border:2px solid #4a68c8;color:#e8eeff;font:600 10px "Pixelify Sans",sans-serif;display:flex;flex-direction:column;align-items:center;gap:2px;padding:3px;cursor:pointer}
+.xst img,.xst i{width:40px;height:40px;image-rendering:pixelated;display:block;background:#0b1340}
+.xst span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:58px}
+.xst.on{border-color:#ffe45e;box-shadow:0 0 0 2px #ffe45e}
+.xst.off{opacity:.35;cursor:default}
+.xprev{width:210px;flex:none;background:#13207a;border:2px solid #4a68c8;padding:10px;display:flex;flex-direction:column;gap:5px;color:#e8eeff}
+.xprev img{width:80px;height:80px;image-rendering:pixelated;align-self:center}
+.xprev h3{margin:0;color:#ffe45e;font-size:22px}
+.xprev em{font-style:normal;color:#cfd8ff;font-size:12px}
+.xprev ul{margin:0;padding-left:16px;font-size:12px}
+.xnote{opacity:.8}
+.xrow{display:flex;gap:10px;align-items:center;justify-content:space-between;background:#13207a;border-left:4px solid #4a68c8;padding:4px 10px;color:#e8eeff;font-size:14px;text-align:left}
+.xrow em{font-style:normal;color:#9fb4ff;font-size:12px}
+.xrow button{font:inherit}
+.xsteps{display:flex;gap:6px;list-style:none;margin:0;padding:0;justify-content:center;flex-wrap:wrap}
+.xsteps li{background:#13207a;border:2px solid #4a68c8;padding:3px 9px;color:#9fb4ff;font-size:13px}
+.xsteps li.done{border-color:#5fd068;color:#8aff8a}.xsteps li.next{border-color:#ffe45e;color:#ffe45e}
+#xside{position:absolute;right:10px;top:46px;z-index:4;width:250px;background:rgba(11,19,64,.92);border:3px solid #e6eeff;box-shadow:0 0 0 3px #070c24;padding:7px;display:flex;flex-direction:column;gap:5px;font:600 12px "Pixelify Sans",sans-serif;color:#e8eeff}
+#xside[hidden],#xprompt[hidden],#xwave[hidden]{display:none}
+#xside .xh{display:flex;justify-content:space-between;color:#ffe45e}
+#xside .xm{display:flex;gap:6px;align-items:center;padding:3px;border:2px solid #4a68c8;background:#13207a}
+#xside .xm.on{border-color:#ffe45e}#xside .xm.ko{opacity:.75}
+#xside .xm img{width:28px;height:28px;image-rendering:pixelated}
+#xside .xm>div{flex:1;min-width:0}
+#xside .xm em,#xside .xm u{font-style:normal;text-decoration:none;color:#9fb4ff;font-size:10px}
+#xside .xb{display:block;height:5px;background:#0b1340;border:1px solid #4a68c8;margin-top:2px}#xside .xb i{display:block;height:100%;background:#5fd068}
+#xside .xm.ko .xb i{background:#e84040}
+#xside button{font:600 11px "Pixelify Sans",sans-serif;background:#1f2f92;color:#e8eeff;border:2px solid #7f95e8;padding:2px 6px;cursor:pointer}
+#xside button:disabled{opacity:.4;cursor:default}
+#xside .xquit{border-color:#ff9a9a;background:#5a1a24}
+#xprompt{position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:4;background:rgba(11,19,64,.92);border:3px solid #e6eeff;box-shadow:0 0 0 3px #070c24;color:#fff;font:600 14px "Pixelify Sans",sans-serif;padding:5px 12px;cursor:pointer}
+#xprompt b{background:#ffe45e;color:#101030;padding:0 5px;margin-right:6px}
+#xwave{position:absolute;right:10px;top:46px;z-index:4;background:rgba(20,22,32,.88);border:3px solid #070c24;box-shadow:inset 0 0 0 2px #cfd8ff;color:#fff;font:600 13px "Pixelify Sans",sans-serif;padding:5px 10px;text-align:right;pointer-events:none}
+#xwave b{color:#ffe45e}
+#xwave.low{top:84px}
+`; document.head.appendChild(st)}
 
 </script>

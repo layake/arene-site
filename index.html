@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.269 · 26/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.270 · 26/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -2164,6 +2164,7 @@ function botEvade(e,t,d,dt,lvl){
   return false;
 }
 function botSteer(e,t,d,dt){
+  if(EXP.on&&e.side===1&&expCrowdSteer(e,t,dt))return; // Expédition : les ennemis forment une foule autour du joueur (expedition.js)
   const b=e.bot, dx=t.x-e.x, dy=t.y-e.y, ux=dx/d, uy=dy/d, px=-uy, py=ux, lvl=DF().dodge;
   b.strafeT-=dt; if(b.strafeT<=0){b.strafeT=rand(.9,1.8);b.strafe=Math.random()<.5?-1:1}
   // esquive : un adversaire qui canalise une visée longue, on sort de sa ligne
@@ -2208,7 +2209,7 @@ function thinkBot(e,dt){
   e.wantShield=b.shieldT>0;
   if(e.shieldOn||e.stun>0)return;
   b.think-=dt;
-  if(!botBusy(e)&&b.think<=0){b.think=rand(DF().think[0],DF().think[1]);botDecide(e,t,d)}
+  if(!botBusy(e)&&b.think<=0){b.think=rand(DF().think[0],DF().think[1]);if(!EXP.on||e.side!==1||expCrowdGo(e))botDecide(e,t,d)}
   if(!botBusy(e)){botSteer(e,t,d,dt);botAvoid(e)}
 }
 const botLineId=id=>!!(PROJ[id]||[RAY_DEFS,STREAM_DEFS,TETHER_DEFS,BURST_DEFS,WAVE_DEFS].some(L=>L.some(d=>d.id===id)));
@@ -8765,18 +8766,19 @@ const EXP_ITEMS={ // boutique : prix provisoires, à régler en jouant
   revive:{n:["Rappel","Revive"],price:300,d:["réanime à la moitié des PV","revives at half HP"]},
   candy:{n:["Super Bonbon","Rare Candy"],price:450,d:["+1 niveau","+1 level"]}};
 const EXP_PRICE={potion:EXP_ITEMS.potion.price,revive:EXP_ITEMS.revive.price};
-const EXP_ZONE=[ // zone 1, un combat après l'autre : ennemis par vague, ennemis de la vague finale (mini-boss ou boss + renforts), réactivité des bots (ai), niveau plancher des ennemis (lv), multiplicateur d'XP (xp)
-  {boss:false,waves:[2,2,2],last:1,ai:"exp1",lv:5,xp:1.25},
-  {boss:false,waves:[2,3,3],last:2,ai:"exp1",lv:7,xp:1.4},
-  {boss:false,waves:[3,3,4],last:2,ai:"easy",lv:9,xp:1.7},
-  {boss:true,waves:[3,4],last:3,ai:"easy",lv:12,xp:3.5}]; // courbe visée pour le starter : ~8, ~11, ~14, ~18 après chaque combat (à mesurer en jouant)
+const EXP_ZONE=[ // zone 1 : ennemis par vague (ils arrivent en flot, 8 vivants au plus), ennemis de la vague finale (mini-boss ou boss + renforts), réactivité des bots (ai), niveau plancher (lv), multiplicateur d'XP (xp)
+  {boss:false,waves:[8,10,12],last:2,ai:"exp1",lv:5,xp:.3,hits:1.6},
+  {boss:false,waves:[10,12,15],last:3,ai:"exp1",lv:7,xp:.32,hits:1.8},
+  {boss:false,waves:[12,15,18],last:3,ai:"easy",lv:9,xp:.38,hits:2.2},
+  {boss:true,waves:[12,15],last:3,ai:"easy",lv:12,xp:.75,hits:2.6}]; // courbe visée pour le starter : ~8, ~11, ~14, ~18 après chaque combat (à mesurer en jouant)
+const EXP_MAXLIVE=12, EXP_FIRST=8; // ennemis vivants en même temps (limite visée par le document) ; taille du premier groupe d'une vague
 const EXP_RECRUIT=.35;
 const slotMax=(key,lv)=>Math.round(statsAtLv(offBase(SPECIES[key]),lv).hp/HP_SCALE);
 const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne » officielle : niveau n à n³ XP
 const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
 let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
 
-const EXP_ENEMY={hp:.75,dmg:.7,boss:{mini:1.5,boss:2.5},player:1.5}; // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
+const EXP_ENEMY={dmg:.5,hitsBoss:{mini:9,boss:22},player:1.5}; // comme dans Pokémon Rumble : un ennemi normal tombe en 1 ou 2 coups (hits, par combat), les mini-boss et boss en beaucoup plus ; la vie se règle sur les dégâts de l'attaque de base du joueur // des vagues de petits ennemis : nombreux, peu résistants, peu dangereux un par un // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
 const BASE_MOVE={grass:"leafage",fire:"ember",water:"watergun"}; // capacité de base de chaque type de starter
 function expShopRoll(open){ // boutique : ouverte au départ et après chaque boss, souvent après les autres combats ; stock tiré au hasard
   return {open,stock:["potion","revive"].concat(["spotion","candy"].filter(()=>Math.random()<.75))};
@@ -9008,7 +9010,7 @@ const EXP_SPAWNS=[[.08,.15],[.5,.06],[.92,.15],[.95,.6],[.92,.92],[.5,.95],[.08,
 function expFight(){
   R.snap=JSON.stringify({team:R.team,money:R.money,bag:R.bag,ci:R.ci,beaten:R.beaten,zoneBeaten:R.zoneBeaten,recruited:R.recruited}); // instantané d'avant combat (défaite = retour ici)
   const Z=EXP_ZONE[R.ci];
-  EXP.scene="fight"; EXP.wave=0; EXP.waves=Z.waves.concat([Z.last]); EXP.pause=0; EXP.marks=[]; EXP.beaten=[]; diff=Z.ai||"normal"; EXP.end=null; EXP.endT=0; EXP.boss=null; EXP.waveFoes=[];
+  EXP.scene="fight"; EXP.wave=0; EXP.waves=Z.waves.concat([Z.last]); EXP.pause=0; EXP.marks=[]; EXP.beaten=[]; diff=Z.ai||"normal"; EXP.end=null; EXP.endT=0; EXP.boss=null; EXP.waveFoes=[]; EXP.pending=0;
   expClose(); expHide(); setArena("prairie"); matchMode="ffa"; endShown=false;
   entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
   const A=actives(), keys=A.map(m=>m.key), [sx,sy]=[(AB.x0+AB.x1)/2,(AB.y0+AB.y1)/2+10];
@@ -9020,10 +9022,14 @@ function expFight(){
   if(typeof applyKit==="function")applyKit();
   musicSet("battle"); showBanner(XT("PRAIRIE","MEADOW"),"win"); expNextWave();
 }
-function expNextWave(){ // 3 secondes de pause, signal des points d'apparition, puis arrivée
-  const n=EXP.waves[EXP.wave], pts=EXP_SPAWNS.slice().sort(()=>Math.random()-.5);
-  const lastWave=EXP.wave===EXP.waves.length-1, Z=EXP_ZONE[R.ci], big=lastWave?1:0, tot=n+big;
-  EXP.marks=[]; for(let i=0;i<tot;i++){const p=pts[i%pts.length]; EXP.marks.push([AB.x0+p[0]*(AB.x1-AB.x0)+(i>=pts.length?14:0),AB.y0+p[1]*(AB.y1-AB.y0)])}
+function expMarks(k,extra){ // k points d'apparition tirés sur les bords de la carte
+  const pts=EXP_SPAWNS.slice().sort(()=>Math.random()-.5), M=[];
+  for(let i=0;i<k+(extra||0);i++){const p=pts[i%pts.length]; M.push([AB.x0+p[0]*(AB.x1-AB.x0)+(i>=pts.length?14:0),AB.y0+p[1]*(AB.y1-AB.y0)])}
+  return M;
+}
+function expNextWave(){ // 3 secondes de pause, signal des points d'apparition, puis un premier groupe ; le reste de la vague arrive en renfort quand il reste peu d'ennemis
+  const n=EXP.waves[EXP.wave], lastWave=EXP.wave===EXP.waves.length-1, Z=EXP_ZONE[R.ci], big=lastWave?1:0, first=Math.min(n,EXP_FIRST);
+  EXP.marks=expMarks(first,big); EXP.pending=n-first;
   EXP.big=big?(Z.boss?"boss":"mini"):null; EXP.pause=3; expWaveDraw();
 }
 // un ennemi apparaît sous la forme qui correspond à son niveau (évolutions par niveau officielles, donnees/expedition/lignes.json)
@@ -9033,10 +9039,10 @@ function expSpawn(){
   EXP.marks.forEach(([x,y],i)=>{
     const big=EXP.big&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXP.big==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
     const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXP.big:null;
-    e.maxHp=Math.round(slotMax(key,lv)*(big?EXP_ENEMY.boss[EXP.big]:EXP_ENEMY.hp)); e.hp=e.maxHp; e.dmgMul=big?1:EXP_ENEMY.dmg;
+    e.dmgMul=big?1:EXP_ENEMY.dmg; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXP.big]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
     const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
     e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e);
-    entities.push(e); fighters.push(e); if(big)EXP.boss=e;
+    entities.push(e); fighters.push(e); spawnFx(e,!!big); if(big)EXP.boss=e;
   });
   EXP.marks=[]; expWaveDraw();
 }
@@ -9048,6 +9054,8 @@ function expWaveCleared(){ // XP après chaque vague : 100 % pour les actifs, 50
       movesUpTo(m.key,m.lv).forEach(id=>{if(!m.learned.includes(id)){m.learned.push(id); if(m.kit.length<4)m.kit.push(id); ups.push(SPL[id].name)}})}});
   expSyncTo();
   pops.push({x:player.x,y:player.y-player.sp.body*2-10,t:0,txt:"+"+gained+" XP",col:"#ffe45e"});
+  shake=Math.max(shake,.12); showBanner(XT("VAGUE TERMINÉE","WAVE CLEARED"),"win");
+  if(ups.length){rings.push({x:player.x,y:player.y,t:0,dur:.7,max:46,c:"#ffe45e"}); rings.push({x:player.x,y:player.y,t:0,dur:.5,max:30,c:"#ffffff"}); pops.push({x:player.x,y:player.y-player.sp.body*2-26,t:0,txt:XT("NIVEAU ↑","LEVEL UP"),col:"#ffe45e"}); try{sfxUI("go")}catch(_){}}
   if(ups.length)showLog(ups.join(" · "),2600);
 }
 function expSyncBack(){ // combattant -> données de run
@@ -9057,22 +9065,82 @@ function expSyncTo(){ // données de run -> combattant (après une montée de ni
   player.team.forEach((s,i)=>{const m=s.m; s.lv=m.lv; s.maxHp=slotMax(m.key,m.lv); s.kit=m.kit.slice(); if(i!==player.ti)s.hp=m.ko?0:m.hp});
   const s=player.team[player.ti]; player.lv=s.lv; player.maxHp=s.maxHp; player.hp=s.m.ko?0:s.m.hp; player.kit=s.kit.slice(); player._stK=null; if(typeof applyKit==="function")applyKit();
 }
+// ---------- effets de combat (UI-EXP09) : retours visuels réduits quand la foule est grande ----------
+const COINS=[];
+const fxLite=()=>fighters.length>12;
+const palOf=e=>TYPE_PAL[e.sp.types[0]]||TYPE_PAL.normal;
+function hitFx(t){ // un coup qui se sent : petites étincelles à la couleur du type
+  if(fxLite()&&Math.random()<.5)return; colorBurst(t.x,t.y-t.sp.body,t.big?6:4,palOf(t),30,100);
+}
+function deathFx(t){ // mort : étoiles du type, anneau, pièces vers le joueur ; plus fort pour un boss
+  const big=!!t.big, n=big?26:(fxLite()?5:10);
+  colorBurst(t.x,t.y-t.sp.body,n,palOf(t),50,big?240:150);
+  rings.push({x:t.x,y:t.y,t:0,dur:big?.5:.3,max:big?70:26,c:big?"#ffd060":"#ffffff"});
+  hitstop=Math.max(hitstop,big?.1:.04); shake=Math.max(shake,big?.5:.04);
+  for(let i=0;i<(big?14:(fxLite()?1:3));i++)COINS.push({x:t.x+rand(-6,6),y:t.y-t.sp.body+rand(-6,6),vx:rand(-60,60),vy:rand(-110,-40),t:0});
+}
+function spawnFx(e,big){ // apparition : anneau de poussière ; boss : onde de choc
+  rings.push({x:e.x,y:e.y,t:0,dur:.4,max:big?60:24,c:big?"#ffb36b":"#e8e0c0"});
+  if(big){rings.push({x:e.x,y:e.y,t:0,dur:.65,max:100,c:"#ffd060"}); shake=Math.max(shake,.3)}
+}
+FX_UPDATERS.push(dt=>{
+  if(!EXP.on)return;
+  for(let i=COINS.length-1;i>=0;i--){const c=COINS[i]; c.t+=dt; c.vy+=300*dt;
+    if(c.t>.35){const dx=player.x-c.x, dy=player.y-player.sp.body-c.y, d=Math.hypot(dx,dy)||1, v=Math.min(520,140+(c.t-.35)*900); c.vx=dx/d*v; c.vy=dy/d*v; if(d<8){COINS.splice(i,1);continue}}
+    c.x+=c.vx*dt; c.y+=c.vy*dt; if(c.t>2)COINS.splice(i,1)}
+  fighters.forEach(e=>{if(e.warn>0)e.warn-=dt});
+});
 function expOut(t){ // ennemi éliminé, ou équipe du joueur entièrement K.O.
-  if(t.out||EXP.end)return; t.out=true; t.ko=1.1;
+  if(t.out||EXP.end)return; t.out=true; t.ko=1.1; if(t!==player)deathFx(t);
   if(t===player){EXP.end="lose"; EXP.endT=1.6; showBanner(XT("DÉFAITE","DEFEAT"),"lose"); return}
-  EXP.beaten.push(t.key); (EXP.waveFoes=EXP.waveFoes||[]).push(t); R.money+=8+t.lv*2*(t.big?3:1);
+  EXP.beaten.push(t.key); (EXP.waveFoes=EXP.waveFoes||[]).push(t); const gain=Math.round((2+t.lv/2)*(t.big?3:1)); R.money+=gain; pops.push({x:t.x,y:t.y-t.sp.body*2,t:0,txt:"+₽"+gain,col:"#ffe45e"});
+}
+// ---------- foule : les ennemis entourent le joueur au lieu de s'empiler, et n'attaquent pas tous en même temps ----------
+// Chaque ennemi prend une place sur un cercle autour du joueur (triés par angle : pas de croisement), le cercle tourne lentement.
+// Seuls K ennemis ont le « jeton d'attaque » (K grandit avec la foule, document : agressivité modulée selon le nombre) ; les autres patientent un peu plus loin.
+function expCrowdTick(dt){
+  EXP.ct=(EXP.ct||0)-dt; if(EXP.ct>0)return; EXP.ct=.3;
+  const L=expAlive().filter(e=>!e.big&&alive(e)); if(!L.length)return;
+  // angles libres autour du joueur (ni mur, ni obstacle) : près d'un mur la foule s'étale sur l'arc qui reste, au lieu de se mettre en file
+  const open=[], P=1.15, T=n=>n; for(let k=0;k<48;k++){const a=k*Math.PI/24, x=player.x+Math.cos(a)*90, y=player.y+Math.sin(a)*90*ISO;
+    if(x>AB.x0+16&&x<AB.x1-16&&y>AB.y0+16&&y<AB.y1-16&&!OBST.some(c=>!c.dead&&Math.hypot(c.x-x,(c.y-y)/ISO)<c.r+14))open.push(a)}
+  const F=open.length>=L.length?open:open.length?open:[0,Math.PI/2,Math.PI,Math.PI*1.5];
+  const cd=(a,b)=>{const d=Math.abs(a-b)%(2*Math.PI); return Math.min(d,2*Math.PI-d)};
+  // chaque ennemi vise la place libre la plus proche de lui, puis on répartit : tri par place, une place sur (libres/ennemis)
+  L.forEach(e=>{const ea=Math.atan2((e.y-player.y)/ISO,e.x-player.x); let bi=0,bd=9; F.forEach((a,i)=>{const d=cd(a,ea); if(d<bd){bd=d;bi=i}}); e._fi=bi});
+  L.sort((p,q)=>p._fi-q._fi||Math.hypot(p.x-player.x,p.y-player.y)-Math.hypot(q.x-player.x,q.y-player.y));
+  L.forEach((e,i)=>e.slotA=F[Math.min(F.length-1,Math.floor((i+.5)*F.length/L.length))]);
+  EXP.tk=(EXP.tk||0)-.3; if(EXP.tk<=0){ // les jetons tournent toutes les ~1,6 s parmi les plus proches
+    EXP.tk=rand(1.2,2); const K=clamp(1+Math.floor(L.length/4),2,4);
+    L.forEach(e=>e.tok=false); L.map(e=>[e,Math.hypot(e.x-player.x,e.y-player.y)*rand(.7,1.3)]).sort((a,b)=>a[1]-b[1]).slice(0,K).forEach(([e])=>e.tok=true)}
+}
+function expCrowdSteer(e,t,dt){ // renvoie vrai si l'ennemi se déplace selon la foule
+  if(e.big||e.slotA===undefined||t!==player)return false;
+  const melee=e.sp.style==="melee", r=melee?(e.tok?24:62):(e.tok?110:150);
+  e.moveTarget={x:clampX(t.x+Math.cos(e.slotA)*r),y:clampY(t.y+Math.sin(e.slotA)*r*ISO)}; return true;
+}
+// sans jeton : il patiente ; avec jeton : il rougit 0,3 s (avertissement), puis attaque
+function expCrowdGo(e){
+  if(e.big||e.slotA===undefined)return true; if(!e.tok)return false;
+  if(e.warned){e.warned=false; return true}
+  e.warned=true; e.warn=.3; e.bot.think=.3; return false;
 }
 function expFightTick(dt){
   if(EXP.end){EXP.endT-=dt; if(EXP.endT<=0){const w=EXP.end; EXP.end=null; w==="win"?expWin():expLose()} return}
   if(EXP.pause>0){EXP.pause-=dt; if(EXP.pause<=0)expSpawn(); expWaveDraw(); return}
-  if(!expAlive().length){
+  expCrowdTick(dt);
+  const alive=expAlive().length;
+  if(EXP.pending>0&&alive<=3){ // renfort : un nouveau groupe arrive (jamais plus de EXP_MAXLIVE vivants)
+    const k=Math.min(EXP.pending,EXP_MAXLIVE-alive,6); EXP.pending-=k; EXP.marks=expMarks(k); EXP.big=null; EXP.pause=1.2; expWaveDraw(); return;
+  }
+  if(!alive&&EXP.pending<=0){
     expWaveCleared(); EXP.wave++;
     if(EXP.wave>=EXP.waves.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else expNextWave();
   }
   expWaveDraw();
 }
 function expWaveDraw(){
-  const n=expAlive().length, txt=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.wave+1,EXP.waves.length)+' / '+EXP.waves.length+'</b>'
+  const n=expAlive().length+(EXP.pending||0)+EXP.marks.length, txt=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.wave+1,EXP.waves.length)+' / '+EXP.waves.length+'</b>'
     +(EXP.pause>0?' · '+XT("arrivée dans ","incoming in ")+Math.ceil(EXP.pause):' · '+n+XT(" ennemi"+(n>1?"s":"")+" restant"+(n>1?"s":"")," enem"+(n>1?"ies":"y")+" left"));
   if(expWave.dataset.v!==txt){expWave.dataset.v=txt; expWave.innerHTML=txt} expWave.hidden=!!EXP.end||EXP.wave>=EXP.waves.length; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out));
 }
@@ -9139,10 +9207,13 @@ setTimeout(()=>{
     if(EXP.scene==="camp")drawCamp(t);
     if(EXP.scene==="fight"){
       EXP.marks.forEach(([x,y],i)=>{ctx.globalAlpha=.55+.35*Math.sin(t*8); ellipseLine(x,y,12,7,"#ff5a4a"); ellipseLine(x,y,8,4,EXP.big&&i===0?"#ffb36b":"#ff5a4a"); ctx.globalAlpha=1});
+      fighters.forEach(e=>{if(e.warn>0&&!e.out){const R0=Math.round(e.sp.body*.9)+5; ctx.globalAlpha=.85; ellipseLine(Math.round(e.x),Math.round(e.y)+1,R0,Math.max(2,Math.round(R0*ISO)),"#ff3a2a"); ellipseLine(Math.round(e.x),Math.round(e.y)+1,R0-2,Math.max(1,Math.round((R0-2)*ISO)),"#ff3a2a"); ctx.fillStyle="#ff3a2a"; ctx.fillRect(Math.round(e.x)-1,Math.round(e.y-e.sp.body*2-8),2,5); ctx.fillRect(Math.round(e.x)-1,Math.round(e.y-e.sp.body*2-1),2,2); ctx.globalAlpha=1}});
+      COINS.forEach(c=>{ctx.fillStyle="#ffd23c"; ctx.fillRect(Math.round(c.x)-1,Math.round(c.y)-1,3,3); ctx.fillStyle="#fff3a0"; ctx.fillRect(Math.round(c.x),Math.round(c.y)-1,1,1)});
       fighters.forEach(e=>{if(e.big&&!e.out){ctx.globalAlpha=.35+.2*Math.sin(t*5); ellipseLine(Math.round(e.x),Math.round(e.y)+1,e.sp.body+8,Math.round((e.sp.body+8)*ISO),"#ff9a3a"); ellipseLine(Math.round(e.x),Math.round(e.y)+1,e.sp.body+11,Math.round((e.sp.body+11)*ISO),"#ffd060"); ctx.globalAlpha=1}});
     }
     if(player&&player.fighter&&!player.out){const R0=Math.round(player.sp.body*.9)+4; ctx.globalAlpha=.8; ellipseLine(Math.round(player.x),Math.round(player.y)+1,R0,Math.max(2,Math.round(R0*ISO)),"#ffe45e"); ctx.globalAlpha=1}
   };
+  const _ad=applyDamage; applyDamage=function(t,att,from,dmg,o){const r=_ad.apply(this,arguments); if(EXP.on&&EXP.scene==="fight"&&t.side===1&&dmg>0&&t.ko<=0&&!t.out)hitFx(t); return r};
   const _dt=drawTags; drawTags=function(){if(!EXP.on)return _dt.apply(this,arguments); if(EXP.scene==='camp')campLabels()};
   const _cast=cast; cast=function(e,id){if(EXP.on&&EXP.scene!=="fight"&&e===player)return; return _cast.apply(this,arguments)};
   const _ls=loadSlot; loadSlot=function(e){_ls.apply(this,arguments); if(EXP.on&&e.team&&e.team[e.ti].lv){e.lv=e.team[e.ti].lv; e._stK=null}};

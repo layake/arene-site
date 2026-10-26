@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.266 · 26/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.267 · 26/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -846,7 +846,7 @@ const EXP={on:false}; // vague en cours (expedition_proto.js)
 const statsAtLv=(base,lv)=>{const f=(b,hp)=>Math.floor((2*b+IV)*lv/100)+(hp?lv+10:5); return {hp:f(base.hp,true),atk:f(base.atk),def:f(base.def),spa:f(base.spa),spd:f(base.spd),spe:f(base.spe)}};
 const offBase=sp=>sp.official?Object.assign({},sp.base,sp.official):sp.base; // stats officielles, sans l'équilibrage du duel (balance.js garde l'original dans sp.official)
 const stOf=e=>e.lv?(e._stK===e.key?e._st:(e._stK=e.key,e._st=statsAtLv(offBase(e.sp),e.lv))):e.sp.stats;
-const lvF=e=>e.lv?(2*e.lv/5+2)/22:1;
+const lvF=e=>(e.lv?(2*e.lv/5+2)/22:1)*(e.dmgMul||1); // dmgMul : réglage de difficulté d'un combattant (ennemis d'Expédition)
 function calcDamage(att,def,spell){
   const sp=spell.cat!=="phys", A=(sp?stOf(att).spa*bfOf(att,"calm","spa")*bfOf(att,"nplot","spa")*bfN(att,"spa"):stOf(att).atk*bfOf(att,"sdance","atk")*bfOf(att,"ddance","atk")*bfN(att,"atk")), D=(sp&&!spell.vsDef?stOf(def).spd*bfOf(def,"calm","spd")*bfOf(def,"iwall","spd")*bfN(def,"spd"):stOf(def).def*bfOf(def,"idef","def")*bfOf(def,"iwall","def")*bfN(def,"def"));
   const stab=att.sp.types.includes(spell.type)?MULT.stab:1;
@@ -7804,9 +7804,9 @@ var _pb=document.querySelector("#pause .pbox");
   const closeCf=()=>{cf.hidden=true; q.querySelector("#pMenu").focus()};
   cf.querySelector("#qcStay").onclick=closeCf; cf.querySelector("#qcQuit").onclick=()=>{cf.hidden=true; quitNow()};
   addEventListener("keydown",e=>{if(!cf.hidden&&e.key==="Escape"){e.preventDefault();e.stopPropagation();closeCf()}},true);
-  q.querySelector("#pMenu").onclick=()=>{ if(rkLive()){cf.hidden=false; cf.querySelector("#qcStay").focus()} else quitNow() };
+  q.querySelector("#pMenu").onclick=()=>{ if(EXP.on){_helpEl.hidden=true;setPause(false);expAskQuit();return} if(rkLive()){cf.hidden=false; cf.querySelector("#qcStay").focus()} else quitNow() };
   setInterval(()=>{
-    const ranked=typeof NET!=="undefined"&&NET.rk, l=ranked?"Quitter le combat classé":"Quitter le combat", d=ranked?(rkLive()?"Compte comme une défaite":"Aucun Elo perdu avant le début"):(NET.on?"Retour au salon":"Retour à la sélection d'équipe");
+    const ranked=typeof NET!=="undefined"&&NET.rk, l=EXP.on?"Quitter l'expédition":ranked?"Quitter le combat classé":"Quitter le combat", d=EXP.on?"La run en cours sera perdue":ranked?(rkLive()?"Compte comme une défaite":"Aucun Elo perdu avant le début"):(NET.on?"Retour au salon":"Retour à la sélection d'équipe");
     const p=q.querySelector("#pMenu"), pd=q.querySelector("#pQd");
     if(p.__l!==l){p.__l=l;p.textContent=l} if(pd.__l!==d){pd.__l=d;pd.textContent=d;pd.className=ranked&&rkLive()?"warn":""}
   },300);
@@ -8760,7 +8760,7 @@ const XT=(fr,en)=>LANG==="en"?en:fr;
 const EXP_START={money:200,potion:2,revive:1}; // kit de départ du document : 2 Potions + 1 Rappel et une petite somme (montant à tester)
 const EXP_PRICE={potion:100,revive:300}; // ponytail: prix provisoires, la boutique à 5 articles viendra plus tard
 const EXP_ZONE=[ // combats de la zone 1 : vagues normales (nombre d'ennemis), puis vague finale (mini-boss ou boss + renforts)
-  {boss:false,waves:[2,2,3],last:1},{boss:false,waves:[3,3,4],last:2},{boss:false,waves:[4,4,5],last:2},{boss:true,waves:[4,5],last:3}];
+  {boss:false,waves:[2,2,2],last:1,ai:"easy"},{boss:false,waves:[2,3,3],last:2,ai:"easy"},{boss:false,waves:[3,3,4],last:2,ai:"normal"},{boss:true,waves:[4,4],last:3,ai:"normal"}]; // ai : réactivité des ennemis (même réglage que la difficulté du Versus) ; premier combat : 2 à 3 ennemis par vague, puis ça monte
 const EXP_FLOOR=[5,7,9,12]; // plancher de niveau des ennemis par combat (courbe indicative : ~20 en fin de zone 1)
 const EXP_RECRUIT=.35;
 const slotMax=(key,lv)=>Math.round(statsAtLv(offBase(SPECIES[key]),lv).hp/HP_SCALE);
@@ -8768,9 +8768,21 @@ const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne
 const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
 let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
 
-function expMember(key,lv){
-  const learned=movesUpTo(key,lv), kit=learned.slice(-4);
+const EXP_ENEMY={hp:.75,dmg:.7,boss:{mini:1.5,boss:2.5}}; // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
+const BASE_MOVE={grass:"leafage",fire:"ember",water:"watergun"}; // capacité de base de chaque type de starter
+function expMember(key,lv,starter){
+  let learned=movesUpTo(key,lv), kit=learned.slice(-4);
+  if(starter){kit=["tackle",BASE_MOVE[SPECIES[key].types[0]],"leer"].filter(id=>SPL[id]); learned=kit.concat(learned.filter(id=>!kit.includes(id)))} // kit de départ de tous les starters : Charge, une capacité de leur type, Groz'Yeux
   return {key,lv,xp:lv*lv*lv,hp:slotMax(key,lv),ko:false,learned,kit:kit.length?kit:["tackle"],active:false};
+}
+// évolutions par niveau : suivante de chaque espèce (starters : starters.json ; ennemis recrutables : lignes.json)
+const EVO={}; EXP_DATA.starters.starters.forEach(s=>{let p=s.cle; s.evolutions.forEach(e=>{EVO[p]=[e.cle,e.niveau]; p=e.cle})});
+Object.values(EXP_DATA.lignes).forEach(ch=>{for(let i=0;i<ch.length-1;i++)EVO[ch[i][0]]=[ch[i+1][0],ch[i+1][1]]});
+const evoOf=m=>{const e=EVO[m.key]; return e&&SPECIES[e[0]]&&m.lv>=e[1]&&!m.evoWait?e[0]:null}; // un recruté déjà au-dessus du niveau d'évolution évolue au prochain gain de niveau (evoWait)
+function expEvolve(m){ // évolution par niveau : stats et PV max changent, sorts gardés, nouveaux sorts ajoutés ; K.O. : revient à 1 PV
+  const to=evoOf(m), old=slotMax(m.key,m.lv); m.key=to; const mx=slotMax(to,m.lv);
+  m.hp=m.ko?1:Math.min(mx,m.hp+mx-old); m.ko=false;
+  movesUpTo(to,m.lv).forEach(id=>{if(!m.learned.includes(id))m.learned.push(id)}); return to;
 }
 const actives=()=>R.team.filter(m=>m.active);
 const avgLv=()=>{const A=actives(); return Math.round(A.reduce((s,m)=>s+m.lv,0)/A.length)};
@@ -8778,12 +8790,12 @@ const expAlive=()=>fighters.filter(e=>e.side===1&&!e.out);
 
 // ---------- entrée, sortie ----------
 function expOpen(){ // bouton du menu : écran du choix du starter
-  EXPEDITION_PROTO=true; titleEl.hidden=true; menuEl.hidden=true; menuOpen=false;
+  if(!EXP.on)EXP.diff0=diff; EXPEDITION_PROTO=true; titleEl.hidden=true; menuEl.hidden=true; menuOpen=false;
   EXP.on=true; EXP.scene="pick"; expHide(); vsT=0; hideVersus(); setArena("prairie");
   entities=[]; fighters=[]; player=makeEntity("treecko",-99,-99); player.fighter=false; foe=player;
   expPick("treecko");
 }
-function expQuit(){ expBar(true); EXP.on=false; EXP.scene=null; R=null; expHide(); hideResult(); showTitle() }
+function expQuit(){ expBar(true); if(EXP.diff0)diff=EXP.diff0; EXP.on=false; EXP.scene=null; R=null; expHide(); hideResult(); showTitle() }
 function expBar(on){const b=slotBtns[0]&&slotBtns[0].parentNode; if(b)b.style.display=on?"":"none"}
 function expHide(){ expBar(true); expSide.hidden=true; expWave.hidden=true; expPrompt.hidden=true; endEl.classList.remove("xp") }
 function expScreen(html,cls){ // fenêtre par-dessus le jeu (même habillage que l'écran de fin) ; le jeu est figé tant qu'elle est ouverte
@@ -8810,7 +8822,7 @@ function expPick(sel){
   el.querySelector("#xBack").onclick=expQuit;
 }
 function expNewRun(key){
-  const s=expMember(key,5); s.active=true; s.starter=true;
+  const s=expMember(key,5,true); s.active=true; s.starter=true;
   R={team:[s],money:EXP_START.money,bag:{potion:EXP_START.potion,revive:EXP_START.revive},ci:0,cand:null,beaten:[],zoneBeaten:[],recruited:false};
   expClose(); expCamp(XT("Bienvenue au camp. Le portail est en haut à droite.","Welcome to camp. The portal is at the top right."));
 }
@@ -8837,7 +8849,8 @@ function campTargets(){ // ce qu'on peut faire au camp, selon la position du jou
   P(CAMP.portal,XT("Portail : partir au combat suivant","Portal: go to the next fight"),expDepart,34);
   P(CAMP.shop,XT("Boutique","Shop"),expShop);
   P(CAMP.board,XT("Tableau de progression","Progress board"),expBoard);
-  P(CAMP.moves,XT("Tableau des capacités (bientôt)","Move board (coming soon)"),()=>showLog(XT("Le tableau des capacités arrive plus tard.","The move board comes later."),2000));
+  P(CAMP.moves,XT("Tableau des capacités","Move board"),expMoves);
+  if(evoOf(R.team[0]))T.push({x:player.x,y:player.y,r:22,label:XT("Faire évoluer ","Evolve ")+player.sp.name,act:()=>expEvoAsk(R.team[0])});
   entities.forEach(e=>{if(e.m)T.push({x:e.x,y:e.y,r:24,label:XT("Parler à ","Talk to ")+e.sp.name,act:()=>expTalk(e.m)}); if(e.cand)T.push({x:e.x,y:e.y,r:26,label:XT("Parler à ","Talk to ")+e.sp.name+XT(" (candidat)"," (candidate)"),act:expCandidate})});
   return T;
 }
@@ -8855,14 +8868,25 @@ stage.addEventListener("pointerdown",e=>{
   for(const t of campTargets()){const d=Math.hypot(t.x-w.wx,t.y-12-w.wy); if(d<Math.max(20,t.r)&&d<hd){hd=d;hit=t}}
   campGoal=hit?hit.label:null; if(hit&&campNear&&campNear.label===hit.label){campGoal=null; player.moveTarget=null; hit.act()}
 });
+function expEvoAsk(m){ // confirmation d'évolution : aperçu avant et après (UI-EXP06)
+  const to=evoOf(m); if(!to)return expClose(); const a=SPECIES[m.key], b=SPECIES[to];
+  const el=expScreen('<h2>'+XT("Évolution","Evolution")+'</h2><div class="xevo"><div><img alt="" src="'+(PORTRAITS[m.key]||"")+'"><b>'+a.name+'</b></div><span>→</span><div><img alt="" src="'+(PORTRAITS[to]||"")+'"><b>'+b.name+'</b></div></div>'
+    +'<small>'+a.name+' <em>'+XT("niv. ","lv. ")+m.lv+'</em> '+XT("évolue en","evolves into")+' <b>'+b.name+'</b> ?</small><small>'+a.types.map(t=>typeBadge(t,1)).join("")+' → '+b.types.map(t=>typeBadge(t,1)).join("")+'</small>'
+    +'<small>'+XT("PV max ","Max HP ")+slotMax(m.key,m.lv)+' → '+slotMax(to,m.lv)+(m.ko?' · '+XT("revient à 1 PV","comes back at 1 HP"):'')+'</small>'
+    +'<div class="ebtn"><button type="button" id="xEv">'+XT("Évoluer","Evolve")+'</button><button type="button" id="xLt">'+XT("Plus tard","Later")+'</button></div>');
+  el.querySelector("#xEv").onclick=()=>{const was=a.name; expEvolve(m); expCamp(was+XT(" évolue en "," evolves into ")+SPECIES[m.key].name+" !")};
+  el.querySelector("#xLt").onclick=()=>expClose();
+}
 function expTalk(m){
   const sp=SPECIES[m.key], A=actives().length, opts=[];
+  if(evoOf(m))opts.push('<button type="button" data-a="evo">'+XT("Faire évoluer","Evolve")+'</button>');
   if(m.ko)opts.push('<small>'+XT("K.O. : utilise un Rappel avant de l'échanger.","Fainted: use a Revive before swapping it.")+'</small>');
   else if(m.active)opts.push('<button type="button" data-a="res">'+XT("Mettre en réserve","Move to reserve")+'</button>');
   else if(A<3)opts.push('<button type="button" data-a="act">'+XT("Rendre actif","Make active")+'</button>');
   else actives().filter(x=>!x.starter&&!x.ko).forEach(x=>opts.push('<button type="button" data-a="sw" data-k="'+R.team.indexOf(x)+'">'+XT("Prendre la place de ","Take the place of ")+SPECIES[x.key].name+'</button>'));
   const el=expScreen('<h2>'+sp.name+'</h2><small>'+XT("Niv. ","Lv. ")+m.lv+' · '+(m.active?XT("actif","active"):XT("réserve","reserve"))+' · '+(m.ko?"K.O.":XT("PV ","HP ")+m.hp+' / '+slotMax(m.key,m.lv))+'</small><small>'+m.kit.map(id=>SPL[id].name).join(" · ")+'</small><div class="ebtn">'+opts.join("")+'<button type="button" data-a="x">'+XT("Fermer","Close")+'</button></div>');
   el.querySelectorAll("[data-a]").forEach(b=>b.onclick=()=>{const a=b.dataset.a;
+    if(a==="evo")return expEvoAsk(m);
     if(a==="res")m.active=false; else if(a==="act")m.active=true; else if(a==="sw"){R.team[+b.dataset.k].active=false; m.active=true}
     expClose(); expSideDraw()});
 }
@@ -8870,7 +8894,7 @@ function expCandidate(){
   const c=R.cand, sp=SPECIES[c.key], full=R.team.length>=6;
   const el=expScreen('<h2>'+sp.name+'</h2><small>'+XT("Niv. ","Lv. ")+c.lv+' · '+XT("veut rejoindre ton équipe.","wants to join your team.")+'</small>'+(full?'<small>'+XT("Équipe pleine (6 au maximum).","Team full (6 max).")+'</small>':'')
     +'<div class="ebtn">'+(full?'':'<button type="button" id="xYes">'+XT("Recruter","Recruit")+'</button>')+'<button type="button" id="xNo">'+XT("Refuser","Refuse")+'</button><button type="button" id="xLater">'+XT("Plus tard","Later")+'</button></div>');
-  const y=el.querySelector("#xYes"); if(y)y.onclick=()=>{const m=expMember(c.key,c.lv); m.active=actives().length<3; R.team.push(m); R.recruited=true; R.cand=null; expCamp(sp.name+XT(" rejoint l'équipe !"," joins the team!"))};
+  const y=el.querySelector("#xYes"); if(y)y.onclick=()=>{const m=expMember(c.key,c.lv); m.evoWait=!!EVO[c.key]&&c.lv>=EVO[c.key][1]; m.active=actives().length<3; R.team.push(m); R.recruited=true; R.cand=null; expCamp(sp.name+XT(" rejoint l'équipe !"," joins the team!"))};
   el.querySelector("#xNo").onclick=()=>{R.cand=null; expCamp()};
   el.querySelector("#xLater").onclick=()=>expClose();
 }
@@ -8887,6 +8911,28 @@ function expUse(i,k){ // objet utilisé au camp sur un Pokémon choisi
   else{if(!m.ko)return; m.ko=false; m.hp=Math.ceil(mx/2)}
   R.bag[k]--; if(i===0){player.hp=m.hp} else entities.forEach(e=>{if(e.m===m)e.hp=m.hp});
   expSideDraw();
+}
+// ---------- UI-EXP07 : tableau des capacités (au camp seulement) ----------
+let MV=null; // brouillon : membre choisi + 4 places (A Z E R)
+function expMoves(i){
+  if(!MV||i!==undefined)MV={i:i||0,S:null}; const m=R.team[MV.i]; if(!m)return expClose();
+  const learned=m.learned.concat(m.kit.filter(id=>!m.learned.includes(id))).filter(id=>SPL[id]);
+  if(!MV.S||MV.key!==m.key+MV.i){MV.S=[...m.kit,null,null,null,null].slice(0,4); MV.key=m.key+MV.i}
+  const row=(x,i)=>'<button type="button" class="xmem'+(i===MV.i?' on':'')+'" data-m="'+i+'"><img alt="" src="'+(PORTRAITS[x.key]||"")+'"><span>'+SPECIES[x.key].name+' <em>'+XT("niv. ","lv. ")+x.lv+'</em></span><small>'+(x.starter?"starter":x.active?XT("actif","active"):XT("réserve","reserve"))+'</small></button>';
+  const mvb=(id,k)=>'<button type="button" class="xmv'+(k?' on':'')+'" data-id="'+id+'"><i class="tyi t-'+SPL[id].type+'"></i><span>'+SPL[id].name+'</span>'+(k?'<b>'+k+'</b>':'')+'</button>';
+  const el=expScreen('<h2>'+XT("Tableau des capacités","Move board")+'</h2><small>'+XT("Seulement au camp. Un clic retire un sort équipé ou met un sort appris sur la première touche libre.","Camp only. Click to unequip a move or put a learned move on the first free key.")+'</small>'
+    +'<div class="xpick"><div class="xteam">'+R.team.map(row).join("")+'</div><div class="xprev" style="width:420px"><h3>'+SPECIES[m.key].name+' <em>'+XT("niv. ","lv. ")+m.lv+'</em></h3>'
+    +'<div class="xkeys">'+MV.S.map((id,s)=>id?mvb(id,SLOT_KEYS[s]):'<div class="xmv empty"><b>'+SLOT_KEYS[s]+'</b></div>').join("")+'</div>'
+    +'<small>'+XT("Sorts équipés","Equipped moves")+' <b>'+MV.S.filter(Boolean).length+' / 4</b></small>'
+    +'<div class="xlearn">'+learned.filter(id=>!MV.S.includes(id)).map(id=>mvb(id,"")).join("")+'</div></div></div>'
+    +'<div class="ebtn"><button type="button" id="xOk">'+XT("Valider","Confirm")+'</button><button type="button" id="xRs">'+XT("Réinitialiser","Reset")+'</button><button type="button" id="xX">'+XT("Fermer","Close")+'</button></div>');
+  el.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{MV=null; expMoves(+b.dataset.m)});
+  el.querySelectorAll(".xmv[data-id]").forEach(b=>b.onclick=()=>{const id=b.dataset.id, s=MV.S.indexOf(id);
+    if(s>=0)MV.S[s]=null; else{const f=MV.S.indexOf(null); if(f<0)return showLog(XT("4 sorts maximum : retire-en un d'abord.","4 moves maximum: remove one first."),1800); MV.S[f]=id}
+    expMoves()});
+  el.querySelector("#xRs").onclick=()=>{MV.S=[...learned.slice(-4),null,null,null,null].slice(0,4); expMoves()};
+  el.querySelector("#xOk").onclick=()=>{const k=MV.S.filter(Boolean); if(!k.length)return showLog(XT("Garde au moins un sort.","Keep at least one move."),1800); m.kit=k; MV=null; expCamp(SPECIES[m.key].name+XT(" : sorts mis à jour"," : moves updated"))};
+  el.querySelector("#xX").onclick=()=>{MV=null; expClose()};
 }
 function expBoard(){
   const steps=EXP_ZONE.map((z,i)=>'<li class="'+(i<R.ci?"done":i===R.ci?"next":"")+'">'+(z.boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(i+1))+'</li>').join("");
@@ -8917,7 +8963,11 @@ function expSideDraw(){
     +'<div class="xh"><span>Potion × '+R.bag.potion+'</span><span>'+XT("Rappel","Revive")+' × '+R.bag.revive+'</span></div>'
     +'<button type="button" class="xquit">'+XT("Abandonner la run","Abandon the run")+'</button>';
   expSide.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>expUse(+b.dataset.i,b.dataset.k));
-  expSide.querySelector(".xquit").onclick=()=>{const el=expScreen('<h2>'+XT("Abandonner ?","Abandon?")+'</h2><small>'+XT("La run sera perdue.","The run will be lost.")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Abandonner","Abandon")+'</button><button type="button" id="xN">'+XT("Annuler","Cancel")+'</button></div>'); el.querySelector("#xY").onclick=expQuit; el.querySelector("#xN").onclick=expClose};
+  expSide.querySelector(".xquit").onclick=expAskQuit;
+}
+function expAskQuit(){ // quitter l'expédition (bouton du panneau, Quitter de la pause, bouton Menu) : confirmation, puis retour à l'accueil
+  const el=expScreen('<h2>'+XT("Quitter l'expédition ?","Leave the expedition?")+'</h2><small>'+XT("La run en cours sera perdue.","The current run will be lost.")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Quitter","Leave")+'</button><button type="button" id="xN">'+XT("Rester","Stay")+'</button></div>');
+  el.querySelector("#xY").onclick=expQuit; el.querySelector("#xN").onclick=()=>{expClose()};
 }
 
 // ---------- UI-EXP03 : combat en vagues ----------
@@ -8925,7 +8975,7 @@ const EXP_SPAWNS=[[.08,.15],[.5,.06],[.92,.15],[.95,.6],[.92,.92],[.5,.95],[.08,
 function expFight(){
   R.snap=JSON.stringify({team:R.team,money:R.money,bag:R.bag,ci:R.ci,beaten:R.beaten,zoneBeaten:R.zoneBeaten,recruited:R.recruited}); // instantané d'avant combat (défaite = retour ici)
   const Z=EXP_ZONE[R.ci];
-  EXP.scene="fight"; EXP.wave=0; EXP.waves=Z.waves.concat([Z.last]); EXP.pause=0; EXP.marks=[]; EXP.beaten=[]; EXP.end=null; EXP.endT=0; EXP.boss=null; EXP.waveFoes=[];
+  EXP.scene="fight"; EXP.wave=0; EXP.waves=Z.waves.concat([Z.last]); EXP.pause=0; EXP.marks=[]; EXP.beaten=[]; diff=Z.ai||"normal"; EXP.end=null; EXP.endT=0; EXP.boss=null; EXP.waveFoes=[];
   expClose(); expHide(); setArena("prairie"); matchMode="ffa"; endShown=false;
   entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
   const A=actives(), keys=A.map(m=>m.key), [sx,sy]=[(AB.x0+AB.x1)/2,(AB.y0+AB.y1)/2+10];
@@ -8950,7 +9000,7 @@ function expSpawn(){
   EXP.marks.forEach(([x,y],i)=>{
     const big=EXP.big&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXP.big==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
     const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXP.big:null;
-    e.maxHp=Math.round(slotMax(key,lv)*(big?(EXP.big==="boss"?3:2.2):1)); e.hp=e.maxHp;
+    e.maxHp=Math.round(slotMax(key,lv)*(big?EXP_ENEMY.boss[EXP.big]:EXP_ENEMY.hp)); e.hp=e.maxHp; e.dmgMul=big?1:EXP_ENEMY.dmg;
     const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
     e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e);
     entities.push(e); fighters.push(e); if(big)EXP.boss=e;
@@ -8961,7 +9011,7 @@ function expWaveCleared(){ // XP après chaque vague : 100 % pour les actifs, 50
   const gained=EXP.waveFoes.reduce((s,e)=>s+Math.round(e.lv*45/7*(e.big?2:1)),0); EXP.waveFoes=[];
   expSyncBack(); const ups=[];
   R.team.forEach(m=>{if(m.ko)return; const before=m.lv; m.xp+=Math.round(gained*(m.active?1:.5)); m.lv=lvOfXp(m.xp);
-    if(m.lv>before){const mx0=slotMax(m.key,before), mx=slotMax(m.key,m.lv); m.hp=Math.min(mx,m.hp+mx-mx0); ups.push(SPECIES[m.key].name+" "+XT("niv. ","lv. ")+m.lv);
+    if(m.lv>before){m.evoWait=false; const mx0=slotMax(m.key,before), mx=slotMax(m.key,m.lv); m.hp=Math.min(mx,m.hp+mx-mx0); ups.push(SPECIES[m.key].name+" "+XT("niv. ","lv. ")+m.lv);
       movesUpTo(m.key,m.lv).forEach(id=>{if(!m.learned.includes(id)){m.learned.push(id); if(m.kit.length<4)m.kit.push(id); ups.push(SPL[id].name)}})}});
   expSyncTo();
   pops.push({x:player.x,y:player.y-player.sp.body*2-10,t:0,txt:"+"+gained+" XP",col:"#ffe45e"});
@@ -9044,6 +9094,8 @@ function campLabels(){
   ctx.save(); ctx.textAlign="center"; const fs=Math.max(11,Math.round(PX*3.2)); ctx.font="700 "+fs+"px 'Pixelify Sans',monospace"; ctx.lineWidth=Math.max(3,Math.round(PX*.8)); ctx.lineJoin="round";
   [[CAMP.shop,XT("Boutique","Shop"),-30],[CAMP.portal,XT("Portail","Portal"),-24],[CAMP.board,XT("Progression","Progress"),-18],[CAMP.moves,XT("Capacités","Moves"),-18],[CAMP.fire,XT("Feu de camp","Campfire"),12]].forEach(([p,txt,dy])=>{
     const [x,y]=campXY(p), sx=(x-cam.x)*PX, sy=(y+dy-cam.y)*PX; ctx.strokeStyle="#0b0d18"; ctx.strokeText(txt,sx,sy); ctx.fillStyle="#ffe45e"; ctx.fillText(txt,sx,sy)});
+  const bang=(e,m)=>{if(!m||!evoOf(m))return; const sx=(e.x-cam.x)*PX, sy=(e.y-e.sp.body*2-12-cam.y)*PX+Math.sin(performance.now()/260)*PX; ctx.fillStyle="#ffe45e"; ctx.strokeStyle="#101030"; ctx.lineWidth=Math.max(2,PX*.6); ctx.font="700 "+Math.round(PX*8)+"px 'Pixelify Sans',monospace"; ctx.strokeText("!",sx,sy); ctx.fillText("!",sx,sy)};
+  entities.forEach(e=>bang(e,e.m)); if(R)bang(player,R.team[0]);
   if(R&&R.cand&&R.cand.e){const e=R.cand.e, sx=(e.x-cam.x)*PX, sy=(e.y-e.sp.body*2-14-cam.y)*PX, txt=XT("Candidat","Candidate"); ctx.strokeText(txt,sx,sy); ctx.fillStyle="#e0b0ff"; ctx.fillText(txt,sx,sy)}
   ctx.restore();
 }
@@ -9061,14 +9113,14 @@ setTimeout(()=>{
   const _dt=drawTags; drawTags=function(){if(!EXP.on)return _dt.apply(this,arguments); if(EXP.scene==='camp')campLabels()};
   const _cast=cast; cast=function(e,id){if(EXP.on&&EXP.scene!=="fight"&&e===player)return; return _cast.apply(this,arguments)};
   const _ls=loadSlot; loadSlot=function(e){_ls.apply(this,arguments); if(EXP.on&&e.team&&e.team[e.ti].lv){e.lv=e.team[e.ti].lv; e._stK=null}};
-  const _sm=startMatch; startMatch=function(){if(EXP.on){EXP.on=false; EXP.scene=null; expHide()} return _sm.apply(this,arguments)};
+  const _sm=startMatch; startMatch=function(){if(EXP.on){if(EXP.diff0)diff=EXP.diff0; EXP.on=false; EXP.scene=null; expHide()} return _sm.apply(this,arguments)};
   const _hu=hudUpdate; hudUpdate=function(){
     if(!EXP.on)return _hu.apply(this,arguments);
     const show=!menuOpen&&player&&player.fighter; hudEl.style.display=show?"":"none"; if(!show)return;
     hudTile(HT.me,player,0,false); const B=EXP.scene==="fight"&&EXP.boss&&!EXP.boss.out?EXP.boss:null;
     HT.foe.parentNode.style.display=B?"":"none"; if(B)hudTile(HT.foe,B,0,false);
   };
-  const _oo=openMenu; openMenu=function(){if(EXP.on){expSide.hidden=true; expPrompt.hidden=true; expWave.hidden=true} return _oo.apply(this,arguments)};
+  const _oo=openMenu; openMenu=function(){if(EXP.on){if(!endShown)expAskQuit(); return} return _oo.apply(this,arguments)}; // en Expédition, « Menu » ne mène plus à la sélection de l'Entraînement
   // bouton de test, visible seulement avec ?exp dans l'adresse
   const g=typeof titleEl!=="undefined"&&titleEl.querySelector(".tgrp"); if(!g||!/[?&]exp\b/.test(location.search))return;
   const b=document.createElement("button"); b.type="button"; b.innerHTML=XT("Expédition (test)<small>Zone 1 : starter, camp, 4 combats en vagues</small>","Expedition (test)<small>Zone 1: starter, camp, 4 wave fights</small>");
@@ -9077,6 +9129,17 @@ setTimeout(()=>{
 {const st=document.createElement("style"); st.textContent=`
 #endscr.xp .xbox{max-width:min(920px,94vw);padding:18px 26px;gap:9px}
 #endscr.xp h2{font-size:40px}
+.xevo{display:flex;align-items:center;justify-content:center;gap:18px;color:#ffe45e;font-size:40px}
+.xevo div{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:14px;color:#e8eeff}
+.xevo img{width:84px;height:84px;image-rendering:pixelated;background:#13207a;border:2px solid #4a68c8}
+.xteam{display:flex;flex-direction:column;gap:4px;width:230px}
+.xmem{display:flex;align-items:center;gap:6px;background:#13207a;border:2px solid #4a68c8;color:#e8eeff;font:600 12px "Pixelify Sans",sans-serif;padding:3px 6px;cursor:pointer;text-align:left}
+.xmem.on{border-color:#ffe45e}.xmem img{width:30px;height:30px;image-rendering:pixelated}.xmem span{flex:1}.xmem em{font-style:normal;color:#9fb4ff}
+.xkeys{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.xlearn{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:150px;overflow-y:auto}
+.xmv{display:flex;align-items:center;gap:6px;background:#13207a;border:2px solid #4a68c8;color:#e8eeff;font:600 12px "Pixelify Sans",sans-serif;padding:4px 6px;min-height:30px;cursor:pointer;text-align:left}
+.xmv.on{border-color:#ffe45e}.xmv.empty{border-style:dashed;opacity:.6;cursor:default}
+.xmv span{flex:1}.xmv b{background:#ffe45e;color:#101030;padding:0 5px}
 #endscr.xp small{color:#cfd8ff;font-size:13px}
 .xpick{display:flex;gap:14px;text-align:left}
 .xgrid{display:grid;grid-template-columns:repeat(3,auto);gap:6px}

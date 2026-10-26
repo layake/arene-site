@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.265 · 26/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.266 · 26/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -3185,6 +3185,8 @@ const DESC={
 const catFr=c=>c==="phys"?"Physique":c==="spec"?"Spécial":"Statut";
 const draft={}; // panoplie en cours de choix, par Ace
 // Un sort que l'éditeur de données a retiré de la liste de l'Ace ne reste pas dans la panoplie en cours : sinon elle compte 4 sorts dont un invisible (3 cochés, impossible d'en ajouter un 4e sans réinitialiser)
+// Les 4 touches (A Z E R) d'une panoplie : dk.s garde la place de chaque sort, pour qu'un sort retiré libère SA touche (dk, lui, reste la liste compacte lue partout ailleurs)
+const slotsOf=dk=>{const S=dk.s; if(S&&S.filter(Boolean).join()===dk.join())return S; return dk.s=[...dk,null,null,null,null].slice(0,4)};
 const draftOf=k=>{const d=draft[k]; if(d&&d.every(id=>SPECIES[k].pool.includes(id)))return d; return draft[k]=kitOf(k).slice()};
 const equipEl=document.getElementById("equip");
 const teamLineEl=document.createElement("div"); teamLineEl.id="teamLine"; equipEl.parentNode.insertBefore(teamLineEl,equipEl);
@@ -3202,7 +3204,7 @@ function equiper(k){ ensureSpecies(k);
 const toucher=()=>typeof matchMedia==="function"&&matchMedia("(hover: none)").matches; // écran tactile : pas de survol, premier toucher = aperçu, second = équipe
 function moveInfo(id){const s=SPL[id];return catFr(s.cat)+" · "+TYPE_FR[s.type]+(id in POW_OFF?" · Puiss. "+(POW_OFF[id]||"—"):s.power?" · Puiss. "+s.power:"")+" · Recharge "+s.cd+" s"}
 function buildEquip(){
-  const ro=!!hoverKey&&hoverKey!==pick, k=ro?hoverKey:pick, sp=SPECIES[k], dk=draftOf(k), np=picks.indexOf(k);
+  const ro=!!hoverKey&&hoverKey!==pick, k=ro?hoverKey:pick, sp=SPECIES[k], dk=draftOf(k), DS=slotsOf(dk), np=picks.indexOf(k);
   const _g0=equipEl.querySelector(".eqg"), keepScroll=(buildEquip._k===k&&_g0)?_g0.scrollTop:0; buildEquip._k=k; // la liste de sorts garde son défilement quand on équipe ou retire un sort
   const en=LANG==="en", tag=ro?(en?"PREVIEW · click to equip (slot ":"APERÇU · clique pour l'équiper (slot ")+(slotCible()+1)+")":(np>=0&&np<teamCap()?(en?"EQUIPPED · SLOT ":"ÉQUIPÉ · SLOT ")+(np+1)+(en?" · pick its 4 moves":" · choisis ses 4 sorts"):(en?"NOT EQUIPPED":"PAS ÉQUIPÉ"));
   const stt=STAT_ROWS.map(([l,s])=>{const o=sp.official&&sp.official[s]!==undefined&&sp.official[s]!==sp.base[s]; // jauge jaune = stat ajustée pour l'équilibrage
@@ -3211,14 +3213,14 @@ function buildEquip(){
   equipEl.innerHTML='<div class="eqtag'+(ro?' ro':'')+'">'+tag+'</div><div class="dhead"><img alt="" src="'+PORTRAITS[k]+'"><div><h3>'+sp.name+'</h3><div class="ty">'+tys+'</div></div></div><div class="dstats">'+stt+'</div><div class="eqh"><span>Sorts <em>'+dk.length+' / 4</em></span><button type="button" id="eqDef">Réinitialiser</button></div><div class="eqg"></div><p class="eqi" id="eqInfo">Sélectionne 4 sorts. Les plus puissants ont un temps de recharge plus long.</p>';
   const grid=equipEl.querySelector(".eqg"), info=equipEl.querySelector("#eqInfo");
   sp.pool.forEach(id=>{
-    const s=SPL[id], b=document.createElement("button"), n=dk.indexOf(id); b.type="button"; b.className="mv"; b.setAttribute("aria-pressed",String(n>=0)); if(ro){b.disabled=true; b.classList.add("ro")}
+    const s=SPL[id], b=document.createElement("button"), n=DS.indexOf(id); b.type="button"; b.className="mv"; b.setAttribute("aria-pressed",String(n>=0)); if(ro){b.disabled=true; b.classList.add("ro")}
     b.innerHTML='<i class="tyi t-'+s.type+'" role="img" aria-label="'+TYPE_FR[s.type]+'" title="'+TYPE_FR[s.type]+'"></i><span>'+s.name+'</span><small>'+spCd(k,id)+(spCd(k,id)!==s.cd?'*':'')+' s</small>'+(n>=0?'<b>'+SLOT_KEYS[n]+'</b>':'');
     const show=()=>{info.innerHTML="<b>"+s.name+"</b> "+moveInfo(id)+"<br>"+DESC[id]};
     b.addEventListener("mouseenter",show); b.addEventListener("focus",show);
     b.addEventListener("click",()=>{
-      const i=dk.indexOf(id);
-      if(i>=0)dk.splice(i,1); else if(dk.length<4)dk.push(id); else{info.textContent="4 sorts maximum : retire-en un d'abord.";return}
-      refreshMenu(); show();
+      const S=slotsOf(dk), i=S.indexOf(id);
+      if(i>=0)S[i]=null; else{const j=S.indexOf(null); if(j<0){info.textContent="4 sorts maximum : retire-en un d'abord.";return} S[j]=id} // le nouveau sort prend la touche libérée
+      dk.length=0; S.forEach(x=>{if(x)dk.push(x)}); refreshMenu(); show();
     });
     grid.appendChild(b);
   });
@@ -8394,6 +8396,9 @@ window.FFA_ONLINE_CAP=()=>M.role?reqSize(M.n):0;
 render();
 NET.ffaState=M;
 })();
+// Fermeture de la fenêtre pendant une partie en ligne : on quitte proprement (liaisons fermées tout de suite) au lieu d'attendre le délai réseau, sinon l'autre côté croit le joueur toujours là.
+// Enregistré ici, après ranked.js, pour que le forfait classé (pagehide de ranked.js) soit envoyé d'abord.
+addEventListener("pagehide",()=>{try{if(NET.on||NET.ffa||(NET.ffaState&&NET.ffaState.role))NET.leave()}catch(_){}});
 
 /* ===== Souris verrouillée dans la fenêtre pendant le combat : curseur virtuel, Échap libère et met en pause ===== */
 const PL={on:false,x:0,y:0,rel:false,skip:0}, PL_JUMP=450; // PL_JUMP : déplacement maximal accepté en un seul événement (pixels)

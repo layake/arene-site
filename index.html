@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.267 · 26/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.268 · 26/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -2083,6 +2083,7 @@ function updateWanderer(e,dt){
 const botBusy=e=>e.stun>0||e.tunnel||e.rush||e.chan||e.lock>0||e.anim==="attack";
 const DIFFS={
   easy:{think:[.9,1.5],shield:0,dodge:0,lead:0,aggr:.35,kit:0},
+  exp1:{think:[1.4,2.4],shield:0,dodge:0,lead:0,aggr:.18,kit:0}, // Expédition, premiers combats : réfléchit lentement, attaque peu, ne vise pas à l'avance
   normal:{think:[.35,.7],shield:3,dodge:0,lead:.5,aggr:.7,kit:1},
   hard:{think:[.15,.35],shield:7,dodge:1,lead:1,aggr:1.1,kit:2}
 };
@@ -8760,7 +8761,7 @@ const XT=(fr,en)=>LANG==="en"?en:fr;
 const EXP_START={money:200,potion:2,revive:1}; // kit de départ du document : 2 Potions + 1 Rappel et une petite somme (montant à tester)
 const EXP_PRICE={potion:100,revive:300}; // ponytail: prix provisoires, la boutique à 5 articles viendra plus tard
 const EXP_ZONE=[ // combats de la zone 1 : vagues normales (nombre d'ennemis), puis vague finale (mini-boss ou boss + renforts)
-  {boss:false,waves:[2,2,2],last:1,ai:"easy"},{boss:false,waves:[2,3,3],last:2,ai:"easy"},{boss:false,waves:[3,3,4],last:2,ai:"normal"},{boss:true,waves:[4,4],last:3,ai:"normal"}]; // ai : réactivité des ennemis (même réglage que la difficulté du Versus) ; premier combat : 2 à 3 ennemis par vague, puis ça monte
+  {boss:false,waves:[2,2,2],last:1,ai:"exp1"},{boss:false,waves:[2,3,3],last:2,ai:"exp1"},{boss:false,waves:[3,3,4],last:2,ai:"easy"},{boss:true,waves:[4,4],last:3,ai:"easy"}]; // ai : réactivité des ennemis (même réglage que la difficulté du Versus) ; premier combat : 2 à 3 ennemis par vague, puis ça monte
 const EXP_FLOOR=[5,7,9,12]; // plancher de niveau des ennemis par combat (courbe indicative : ~20 en fin de zone 1)
 const EXP_RECRUIT=.35;
 const slotMax=(key,lv)=>Math.round(statsAtLv(offBase(SPECIES[key]),lv).hp/HP_SCALE);
@@ -8768,7 +8769,7 @@ const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne
 const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
 let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
 
-const EXP_ENEMY={hp:.75,dmg:.7,boss:{mini:1.5,boss:2.5}}; // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
+const EXP_ENEMY={hp:.75,dmg:.7,boss:{mini:1.5,boss:2.5},player:1.5}; // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
 const BASE_MOVE={grass:"leafage",fire:"ember",water:"watergun"}; // capacité de base de chaque type de starter
 function expMember(key,lv,starter){
   let learned=movesUpTo(key,lv), kit=learned.slice(-4);
@@ -8979,7 +8980,7 @@ function expFight(){
   expClose(); expHide(); setArena("prairie"); matchMode="ffa"; endShown=false;
   entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
   const A=actives(), keys=A.map(m=>m.key), [sx,sy]=[(AB.x0+AB.x1)/2,(AB.y0+AB.y1)/2+10];
-  player=makeFighter(keys[0],sx,sy,false,A[0].kit); player.side=0; player.out=false;
+  player=makeFighter(keys[0],sx,sy,false,A[0].kit); player.side=0; player.out=false; player.dmgMul=EXP_ENEMY.player;
   initTeam(player,keys,A.map(m=>m.kit));
   player.team.forEach((s,i)=>{const m=A[i]; s.m=m; s.lv=m.lv; s.maxHp=slotMax(m.key,m.lv); s.hp=m.ko?0:m.hp; s.dead=m.ko});
   const first=player.team.findIndex(s=>!s.dead); loadSlot(player,first,false); player.lv=player.team[first].lv; player._stK=null;

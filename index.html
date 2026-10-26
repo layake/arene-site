@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.264 · 26/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.265 · 26/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -1233,7 +1233,7 @@ function makeEntity(species,x,y){
 const KITS={};
 var KITS_RAW={}; try{KITS_RAW=JSON.parse(localStorage.getItem("aceKits")||"{}")||{}}catch(_){} // relu dans ui2.js, une fois tous les Pokémon chargés
 try{const k=KITS_RAW;for(const s in k)if(SPECIES[s]&&Array.isArray(k[s])&&k[s].length===4&&k[s].every(id=>SPECIES[s].pool.includes(id))&&new Set(k[s]).size===4)KITS[s]=k[s]}catch(_){}
-const kitOf=key=>KITS[key]||SPECIES[key].kit;
+const kitOf=key=>KITS[key]&&KITS[key].length===4&&KITS[key].every(id=>SPECIES[key].pool.includes(id))?KITS[key]:SPECIES[key].kit; // une panoplie mémorisée dont un sort n'est plus dans la liste (éditeur) est ignorée
 function makeFighter(species,x,y,bot,kit){
   const e=makeEntity(species,x,y);
   e.kit=(kit||SPECIES[species].kit).slice(); e.slow=0; e.burn=0; e.inv=0; e.psn=0; e.flashC=null; e.sleep=false;
@@ -3184,7 +3184,8 @@ const DESC={
 };
 const catFr=c=>c==="phys"?"Physique":c==="spec"?"Spécial":"Statut";
 const draft={}; // panoplie en cours de choix, par Ace
-const draftOf=k=>draft[k]||(draft[k]=kitOf(k).slice());
+// Un sort que l'éditeur de données a retiré de la liste de l'Ace ne reste pas dans la panoplie en cours : sinon elle compte 4 sorts dont un invisible (3 cochés, impossible d'en ajouter un 4e sans réinitialiser)
+const draftOf=k=>{const d=draft[k]; if(d&&d.every(id=>SPECIES[k].pool.includes(id)))return d; return draft[k]=kitOf(k).slice()};
 const equipEl=document.getElementById("equip");
 const teamLineEl=document.createElement("div"); teamLineEl.id="teamLine"; equipEl.parentNode.insertBefore(teamLineEl,equipEl);
 // Slots d'équipe : un clic sur un slot (vide ou plein) le rend actif ; la croix retire son Ace. Un Ace cliqué dans la liste va dans le slot actif.

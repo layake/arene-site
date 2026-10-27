@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.271 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.272 · 27/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -1456,9 +1456,9 @@ function applyDamage(t,att,from,dmg,o){
     if(t.hp>0){t.hp=Math.max(0,t.hp-dmg);t.hpShow=3;t.flash=.14;pops.push({x:t.x,y:t.y-34,t:0,txt:"-"+dmg});if(t.hp<=0)knockOut(t,att)}
     return;
   }
-  const armor=t.rush&&(t.rush.ph==="dash"||t.rush.ph==="flurry"); // la charge ne peut pas être interrompue, seulement la canalisation
-  if(t.rush&&t.rush.ph==="chan")cancelRush(t,true);
-  if(t.chan)cancelChan(t,true);
+  const armor=(t.rush&&(t.rush.ph==="dash"||t.rush.ph==="flurry"))||t.sarmor; // la charge ne peut pas être interrompue, seulement la canalisation
+  if(t.rush&&t.rush.ph==="chan"&&!t.sarmor)cancelRush(t,true);
+  if(t.chan&&!t.sarmor)cancelChan(t,true);
   t.hp=Math.max(0,t.hp-dmg); t.hpShow=3; t.flash=.14;
   pops.push({x:t.x,y:t.y-34,t:0,txt:"-"+dmg});
   if(!armor){
@@ -1554,7 +1554,7 @@ function updateMove(e,dt){
     }else{
       e.dir=dirFromVector(dx,dy);
       e.run=true; // courir est la seule façon de se déplacer
-      const step=Math.min(SPEED*e.sp.spd*RUN_MULT*(e.slow>0?TRAP.slow:1)*bfOf(e,"ddance","spe")*bfOf(e,"bboost","spe")*bfN(e,"spe")*dt,d);
+      const step=Math.min(SPEED*e.sp.spd*(e.spdMul||1)*RUN_MULT*(e.slow>0?TRAP.slow:1)*bfOf(e,"ddance","spe")*bfOf(e,"bboost","spe")*bfN(e,"spe")*dt,d);
       e.x=clampX(e.x+dx/d*step); e.y=clampY(e.y+dy/d*step);
       e.stepD=(e.stepD||0)+step; if(e.stepD>=20){e.stepD-=20;sfxStep(e)}
       setAnim(e,"walk"); return;
@@ -8779,7 +8779,7 @@ const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne
 const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
 let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
 
-const EXP_ENEMY={dmg:.5,hitsBoss:{mini:9,boss:22},player:1.5}; // comme dans Pokémon Rumble : un ennemi normal tombe en 1 ou 2 coups (hits, par combat), les mini-boss et boss en beaucoup plus ; la vie se règle sur les dégâts de l'attaque de base du joueur // des vagues de petits ennemis : nombreux, peu résistants, peu dangereux un par un // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
+const EXP_ENEMY={spd:.6,spdBoss:.8,dmg:.5,hitsBoss:{mini:9,boss:22},player:1.5}; // comme dans Pokémon Rumble : un ennemi normal tombe en 1 ou 2 coups (hits, par combat), les mini-boss et boss en beaucoup plus ; la vie se règle sur les dégâts de l'attaque de base du joueur // des vagues de petits ennemis : nombreux, peu résistants, peu dangereux un par un // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
 const BASE_MOVE={grass:"leafage",fire:"ember",water:"watergun"}; // capacité de base de chaque type de starter
 function expShopRoll(open){ // boutique : ouverte au départ et après chaque boss, souvent après les autres combats ; stock tiré au hasard
   return {open,stock:["potion","revive"].concat(["spotion","candy"].filter(()=>Math.random()<.75))};
@@ -9040,9 +9040,9 @@ function expSpawn(){
   EXP.marks.forEach(([x,y],i)=>{
     const big=EXP.big&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXP.big==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
     const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXP.big:null;
-    e.dmgMul=big?1:EXP_ENEMY.dmg; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXP.big]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
-    const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
-    e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e);
+    e.dmgMul=big?1:EXP_ENEMY.dmg; e.spdMul=big?EXP_ENEMY.spdBoss:EXP_ENEMY.spd; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXP.big]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
+    const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(big)k.sort((a,b)=>(SPL[b].power||0)-(SPL[a].power||0)); // boss : ses capacités les plus fortes d'abord if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
+    e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e); if(big)e.sarmor=true;
     entities.push(e); fighters.push(e); spawnFx(e,!!big); if(big)EXP.boss=e;
   });
   EXP.marks=[]; expWaveDraw();
@@ -9112,7 +9112,7 @@ function expCrowdTick(dt){
   L.sort((p,q)=>p._fi-q._fi||Math.hypot(p.x-player.x,p.y-player.y)-Math.hypot(q.x-player.x,q.y-player.y));
   L.forEach((e,i)=>e.slotA=F[Math.min(F.length-1,Math.floor((i+.5)*F.length/L.length))]);
   EXP.tk=(EXP.tk||0)-.3; if(EXP.tk<=0){ // les jetons tournent toutes les ~1,6 s parmi les plus proches
-    EXP.tk=rand(1.2,2); const K=clamp(1+Math.floor(L.length/4),2,4);
+    EXP.tk=rand(1.2,2); const K=clamp(2+Math.floor(L.length/3),3,6); // plafond relevé (retour du propriétaire) : jusqu'à 6 attaquants en même temps
     L.forEach(e=>e.tok=false); L.map(e=>[e,Math.hypot(e.x-player.x,e.y-player.y)*rand(.7,1.3)]).sort((a,b)=>a[1]-b[1]).slice(0,K).forEach(([e])=>e.tok=true)}
 }
 function expCrowdSteer(e,t,dt){ // renvoie vrai si l'ennemi se déplace selon la foule
@@ -9121,8 +9121,18 @@ function expCrowdSteer(e,t,dt){ // renvoie vrai si l'ennemi se déplace selon la
   e.moveTarget={x:clampX(t.x+Math.cos(e.slotA)*r),y:clampY(t.y+Math.sin(e.slotA)*r*ISO)}; return true;
 }
 // sans jeton : il patiente ; avec jeton : il rougit 0,3 s (avertissement), puis attaque
+// boss et mini-boss (comme dans Pokémon Rumble) : schéma répétitif (3 fois la capacité principale, puis la seconde, puis la 3e quand il est blessé), jamais interrompus par un coup,
+// plus rapides à 60 % puis 30 % de leurs PV ; ils avancent droit sur le joueur et lancent leur capacité quand ils sont à portée
+function expBossGo(e){
+  const t=player, d=Math.hypot(t.x-e.x,(t.y-e.y)/ISO), ph=e.hp/e.maxHp>.6?0:e.hp/e.maxHp>.3?1:2, K=e.kit;
+  e.bot.think=[1.3,1,.7][ph]*rand(.85,1.15); e.stun=0; e.sleep=false;
+  const seq=[0,0,0,1,ph>=1&&K[2]?2:1], id=K[seq[(e.bp||0)%seq.length]]||K[0];
+  const melee=SPL[id].melee||SPL[id].ground===false; if(d>(melee?58:250)||cdOf(e,id)>0||t.ko>0)return false;
+  e.bp=(e.bp||0)+1; aimTo(e,t,false,0); cast(e,id); return false;
+}
 function expCrowdGo(e){
-  if(e.big||e.slotA===undefined)return true; if(!e.tok)return false;
+  if(e.big)return expBossGo(e);
+  if(e.slotA===undefined)return true; if(!e.tok)return false;
   if(e.warned){e.warned=false; return true}
   e.warned=true; e.warn=.3; e.bot.think=.3; return false;
 }

@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.272 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.273 · 27/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -7809,7 +7809,7 @@ var _pb=document.querySelector("#pause .pbox");
   addEventListener("keydown",e=>{if(!cf.hidden&&e.key==="Escape"){e.preventDefault();e.stopPropagation();closeCf()}},true);
   q.querySelector("#pMenu").onclick=()=>{ if(EXP.on){_helpEl.hidden=true;setPause(false);expAskQuit();return} if(rkLive()){cf.hidden=false; cf.querySelector("#qcStay").focus()} else quitNow() };
   setInterval(()=>{
-    const ranked=typeof NET!=="undefined"&&NET.rk, l=EXP.on?"Quitter l'expédition":ranked?"Quitter le combat classé":"Quitter le combat", d=EXP.on?"La run en cours sera perdue":ranked?(rkLive()?"Compte comme une défaite":"Aucun Elo perdu avant le début"):(NET.on?"Retour au salon":"Retour à la sélection d'équipe");
+    const ranked=typeof NET!=="undefined"&&NET.rk, l=EXP.on?"Quitter l'expédition":ranked?"Quitter le combat classé":"Quitter le combat", d=EXP.on?"La run en cours est sauvegardée":ranked?(rkLive()?"Compte comme une défaite":"Aucun Elo perdu avant le début"):(NET.on?"Retour au salon":"Retour à la sélection d'équipe");
     const p=q.querySelector("#pMenu"), pd=q.querySelector("#pQd");
     if(p.__l!==l){p.__l=l;p.textContent=l} if(pd.__l!==d){pd.__l=d;pd.textContent=d;pd.className=ranked&&rkLive()?"warn":""}
   },300);
@@ -8805,10 +8805,24 @@ const expAlive=()=>fighters.filter(e=>e.side===1&&!e.out);
 // ---------- entrée, sortie ----------
 function expOpen(){ // bouton du menu : écran du choix du starter
   if(!EXP.on)EXP.diff0=diff; EXPEDITION_PROTO=true; titleEl.hidden=true; menuEl.hidden=true; menuOpen=false;
-  EXP.on=true; EXP.scene="pick"; expHide(); vsT=0; hideVersus(); setArena("prairie");
+  EXP.on=true; EXP.scene="pick"; expHide(); vsT=0; hideVersus(); setArena("prairie"); hudEl.style.display="none"; // pas de cadres de vie vides derrière les fenêtres de départ
   entities=[]; fighters=[]; player=makeEntity("treecko",-99,-99); player.fighter=false; foe=player;
-  expPick("treecko");
+  const sv=expLoad(); if(sv)expResume(sv); else expPick("treecko");
 }
+const EXP_SAVE="aceExpRun";
+function expSave(){ if(!R)return; try{localStorage.setItem(EXP_SAVE,JSON.stringify({v:1,t:Date.now(),R},(k,v)=>k==="e"?undefined:v))}catch(_){} } // « e » : l'entité du candidat n'est pas sauvegardée
+function expLoad(){ try{const s=JSON.parse(localStorage.getItem(EXP_SAVE)||"null"); if(s&&s.v===1&&s.R&&Array.isArray(s.R.team)&&s.R.team.length&&s.R.team.every(m=>SPECIES[m.key])&&EXP_ZONE[s.R.ci])return s}catch(_){} return null }
+function expClear(){ try{localStorage.removeItem(EXP_SAVE)}catch(_){} }
+function expResume(s){ // une run sauvegardée existe : la reprendre ou en commencer une nouvelle
+  const r=s.R, st=r.team[0], act=r.team.filter(m=>m.active).length;
+  const el=expScreen('<h2>'+XT("Expédition en cours","Expedition in progress")+'</h2><small>'+XT("Zone 1 · ","Zone 1 · ")+(EXP_ZONE[r.ci].boss?XT("boss","boss"):XT("combat ","fight ")+(r.ci+1)+' / 4')+' · '+SPECIES[st.key].name+' '+XT("niv. ","lv. ")+st.lv+' · '+r.team.length+' '+XT("Pokémon","Pokémon")+' · ₽ '+r.money+'</small>'
+    +'<small>'+XT("Sauvegarde du ","Saved ")+new Date(s.t).toLocaleString(LANG==="en"?"en-GB":"fr-FR")+'</small>'
+    +'<div class="ebtn"><button type="button" id="xRes">'+XT("Reprendre","Resume")+'</button><button type="button" id="xNew">'+XT("Nouvelle expédition","New expedition")+'</button><button type="button" id="xBk">Menu</button></div>');
+  el.querySelector("#xRes").onclick=()=>{R=s.R; expCamp(XT("Expédition reprise.","Expedition resumed."))};
+  el.querySelector("#xNew").onclick=()=>{const c=expScreen('<h2>'+XT("Nouvelle expédition ?","New expedition?")+'</h2><small>'+XT("La sauvegarde actuelle sera remplacée.","The current save will be replaced.")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Remplacer","Replace")+'</button><button type="button" id="xN">'+XT("Annuler","Cancel")+'</button></div>'); c.querySelector("#xY").onclick=()=>{expClear(); expPick("treecko")}; c.querySelector("#xN").onclick=()=>expResume(s)};
+  el.querySelector("#xBk").onclick=expQuit;
+}
+function expAbandon(){ expClear(); expQuit() } // fin de run volontaire : la sauvegarde est effacée
 function expQuit(){ expBar(true); if(EXP.diff0)diff=EXP.diff0; EXP.on=false; EXP.scene=null; R=null; expHide(); hideResult(); showTitle() }
 function expBar(on){const b=slotBtns[0]&&slotBtns[0].parentNode; if(b)b.style.display=on?"":"none"}
 function expHide(){ expBar(true); expSide.hidden=true; expWave.hidden=true; expPrompt.hidden=true; endEl.classList.remove("xp") }
@@ -8856,7 +8870,7 @@ function expCamp(msg){
   R.team.slice(1).forEach((m,i)=>{const [x,y]=campXY(CAMP.seats[i]); const e=makeEntity(m.key,x,y); e.m=m; e.lv=m.lv; e.maxHp=slotMax(m.key,m.lv); e.hp=m.ko?0:m.hp; e.dir=dirFromVector(campXY(CAMP.fire)[0]-x,campXY(CAMP.fire)[1]-y); entities.push(e)});
   if(R.cand){const z=CAMP.zones[R.cand.z], x=AB.x0+(z[0]+z[2])/2*(AB.x1-AB.x0), y=AB.y0+(z[1]+z[3])/2*(AB.y1-AB.y0), e=makeEntity(R.cand.key,x,y); e.cand=true; e.lv=R.cand.lv; e.maxHp=e.hp=slotMax(R.cand.key,R.cand.lv); entities.push(e); R.cand.e=e}
   if(typeof applyKit==="function")applyKit();
-  musicSet("menu"); expSideDraw(); expSide.hidden=false; expBar(false); if(msg)showLog(msg,3200);
+  musicSet("menu"); expSideDraw(); expSide.hidden=false; expBar(false); expSave(); if(msg)showLog(msg,3200);
 }
 function campTargets(){ // ce qu'on peut faire au camp, selon la position du joueur
   const T=[], P=(p,label,act,r)=>{const [x,y]=campXY(p); T.push({x,y,r:r||30,label,act})};
@@ -8999,10 +9013,14 @@ function expSideDraw(){
     +'<button type="button" class="xquit">'+XT("Abandonner la run","Abandon the run")+'</button>';
   expSide.querySelectorAll("[data-k]").forEach(b=>b.onclick=()=>expUse(+b.dataset.i,b.dataset.k));
   expSide.querySelector(".xgo").onclick=expDepart;
-  expSide.querySelector(".xquit").onclick=expAskQuit;
+  expSide.querySelector(".xquit").onclick=expAskAbandon;
+}
+function expAskAbandon(){
+  const el=expScreen('<h2>'+XT("Abandonner la run ?","Abandon the run?")+'</h2><small>'+XT("Elle sera définitivement perdue (pas de reprise possible).","It will be lost for good (no resume).")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Abandonner","Abandon")+'</button><button type="button" id="xN">'+XT("Rester","Stay")+'</button></div>');
+  el.querySelector("#xY").onclick=expAbandon; el.querySelector("#xN").onclick=()=>{expClose()};
 }
 function expAskQuit(){ // quitter l'expédition (bouton du panneau, Quitter de la pause, bouton Menu) : confirmation, puis retour à l'accueil
-  const el=expScreen('<h2>'+XT("Quitter l'expédition ?","Leave the expedition?")+'</h2><small>'+XT("La run en cours sera perdue.","The current run will be lost.")+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Quitter","Leave")+'</button><button type="button" id="xN">'+XT("Rester","Stay")+'</button></div>');
+  const el=expScreen('<h2>'+XT("Quitter l'expédition ?","Leave the expedition?")+'</h2><small>'+(R?XT("Ta run est sauvegardée à ton dernier passage au camp : tu pourras la reprendre. Le combat en cours sera à refaire.","Your run is saved at your last camp visit: you can resume it. The current fight will have to be redone."):XT("Aucune run en cours.","No run in progress."))+'</small><div class="ebtn"><button type="button" id="xY">'+XT("Sauvegarder et quitter","Save and quit")+'</button><button type="button" id="xN">'+XT("Rester","Stay")+'</button></div>');
   el.querySelector("#xY").onclick=expQuit; el.querySelector("#xN").onclick=()=>{expClose()};
 }
 
@@ -9160,13 +9178,14 @@ function expWaveDraw(){
 function expWin(){
   hideBanner(); expWave.hidden=true; expSyncBack(); R.beaten=R.beaten.concat(EXP.beaten); R.zoneBeaten=R.zoneBeaten.concat(EXP.beaten);
   const Z=EXP_ZONE[R.ci]; R.ci++; R.shop=expShopRoll(Z.boss||Math.random()<.6);
-  if(R.ci>=EXP_ZONE.length){ // boss de zone vaincu : fin de la première version
+  if(R.ci>=EXP_ZONE.length){ expClear(); // boss de zone vaincu : fin de la première version
     const el=expScreen('<h2>'+XT("ZONE 1 TERMINÉE","ZONE 1 CLEARED")+'</h2><small>'+XT("Les zones 2 et 3 et la zone finale arrivent plus tard.","Zones 2, 3 and the final zone come later.")+'</small>'+expTeamLines()+'<div class="ebtn"><button type="button" id="xM">Menu</button></div>',"win");
     el.querySelector("#xM").onclick=expQuit; return;
   }
   // recrutement : 30 à 40 % de chances, un seul candidat parmi les vaincus ; offre garantie avant le boss de zone si personne n'a encore rejoint l'équipe
-  const guarantee=EXP_ZONE[R.ci].boss&&!R.recruited, pool=(guarantee?R.zoneBeaten:EXP.beaten).filter(k=>SPECIES[k]);
+  const guarantee=!R.recruited&&(R.ci===1||EXP_ZONE[R.ci].boss), pool=(guarantee?R.zoneBeaten:EXP.beaten).filter(k=>SPECIES[k]);
   R.cand=pool.length&&(guarantee||Math.random()<EXP_RECRUIT)?{key:pool[Math.floor(Math.random()*pool.length)],lv:avgLv(),z:Math.floor(Math.random()*CAMP.zones.length)}:null;
+  expSave();
   const el=expScreen('<h2>'+XT("VICTOIRE","VICTORY")+'</h2><small>'+(Z.boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+R.ci)+' · '+XT("Prairie","Meadow")+'</small>'+expTeamLines()
     +'<div class="xrow"><span>'+XT("Argent","Money")+'</span><b>₽ '+R.money+'</b></div>'+(R.cand?'<small>'+XT("Un Pokémon vaincu t'attend au camp…","A defeated Pokémon is waiting at camp…")+'</small>':'')
     +'<div class="ebtn"><button type="button" id="xC">'+XT("Retour au camp","Back to camp")+'</button></div>',"win");
@@ -9175,15 +9194,16 @@ function expWin(){
 function expTeamLines(){return R.team.filter(m=>m.active).map(m=>'<div class="xrow"><span>'+SPECIES[m.key].name+'</span><b>'+XT("niv. ","lv. ")+m.lv+'</b><em>'+(m.ko?"K.O.":m.hp+' / '+slotMax(m.key,m.lv)+XT(" PV"," HP"))+'</em></div>').join("")}
 function expLose(){ // retour à l'état d'avant combat, pénalité de 25 % de l'argent
   hideBanner(); expWave.hidden=true;
-  const S=JSON.parse(R.snap), before=S.money; Object.assign(R,S); R.money=Math.floor(before*.75); R.cand=null;
+  const S=JSON.parse(R.snap), before=S.money; Object.assign(R,S); R.money=Math.floor(before*.75); R.cand=null; expSave(); // la pénalité reste même si on ferme la page
   const el=expScreen('<h2>'+XT("DÉFAITE","DEFEAT")+'</h2><small>'+XT("Tous tes actifs sont K.O.","All your active Pokémon fainted.")+'</small>'
     +'<div class="xrow"><span>'+XT("Équipe, niveaux, XP","Team, levels, XP")+'</span><em>'+XT("remis comme avant ce combat","restored to before this fight")+'</em></div>'
     +'<div class="xrow"><span>'+XT("Argent","Money")+'</span><b>₽ '+before+' → ₽ '+R.money+'</b><em>− 25 %</em></div>'
     +'<small>'+XT("Même environnement, autres adversaires.","Same environment, other opponents.")+'</small>'
     +'<div class="ebtn"><button type="button" id="xR">'+XT("Réessayer","Retry")+'</button><button type="button" id="xA">'+XT("Abandonner la run","Abandon the run")+'</button></div>',"lose");
-  el.querySelector("#xR").onclick=expFight; el.querySelector("#xA").onclick=expQuit;
+  el.querySelector("#xR").onclick=expFight; el.querySelector("#xA").onclick=expAbandon;
 }
 function expRunOver(why){
+  expClear();
   const el=expScreen('<h2>'+XT("FIN DE RUN","RUN OVER")+'</h2><small>'+why+'</small>'+expTeamLines()+'<div class="ebtn"><button type="button" id="xM">Menu</button></div>',"lose");
   el.querySelector("#xM").onclick=expQuit;
 }

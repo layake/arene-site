@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.275 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.276 · 27/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -9048,14 +9048,21 @@ function expFight(){
   musicSet("battle"); showBanner(XT("PRAIRIE","MEADOW"),"win"); expNextWave();
 }
 function expCartes(env){ return ((EXP_DATA.cartes&&EXP_DATA.cartes.cartes)||[]).filter(c=>c.env===env&&carteValide(c)) } // seules les cartes complètes servent en jeu
-function expMarks(k,extra){ // k points d'apparition : ceux de la carte, sinon les bords de l'arène
-  const C=EXP.carte, pts=(C?C.spawns.map(p=>[p[0],p[1]]):EXP_SPAWNS.map(p=>[AB.x0+p[0]*(AB.x1-AB.x0),AB.y0+p[1]*(AB.y1-AB.y0)])).sort(()=>Math.random()-.5), M=[];
+// vague en cours pour les points d'apparition d'une carte : son numéro (1, 2, 3...) et 9 si c'est la vague finale du combat
+const expVagues=()=>{const w=EXP.wave+1; return EXP.wave===EXP.waves.length-1?[w,9]:[w]};
+function expPoints(type){ // points d'apparition de la carte pour la vague en cours : ceux de cette vague, sinon ceux de « toutes les vagues », sinon tous
+  const C=EXP.carte, L=C.spawns.filter(p=>(p[3]==="b"?"b":"e")===type), W=expVagues(), ici=L.filter(p=>W.includes(p[2]|0)), partout=L.filter(p=>!(p[2]|0));
+  return ici.length?ici:partout.length?partout:type==="e"?L:[];
+}
+function expMarks(k,extra){ // k points d'apparition : ceux de la carte (selon la vague), sinon les bords de l'arène
+  const C=EXP.carte, pts=(C?expPoints("e").map(p=>[p[0],p[1]]):EXP_SPAWNS.map(p=>[AB.x0+p[0]*(AB.x1-AB.x0),AB.y0+p[1]*(AB.y1-AB.y0)])).sort(()=>Math.random()-.5), M=[];
   for(let i=0;i<k+(extra||0);i++){const p=pts[i%pts.length]; M.push([p[0]+(i>=pts.length?14:0),p[1]])}
   return M;
 }
 function expNextWave(){ // 3 secondes de pause, signal des points d'apparition, puis un premier groupe ; le reste de la vague arrive en renfort quand il reste peu d'ennemis
   const n=EXP.waves[EXP.wave], lastWave=EXP.wave===EXP.waves.length-1, Z=EXP_ZONE[R.ci], big=lastWave?1:0, first=Math.min(n,EXP_FIRST);
   EXP.marks=expMarks(first,big); EXP.pending=n-first;
+  if(big&&EXP.carte){const B=expPoints("b"); if(B.length){const b=B[Math.floor(Math.random()*B.length)]; EXP.marks[0]=[b[0],b[1]]}} // le mini-boss ou le boss apparaît sur un point de boss de la carte, s'il y en a
   EXP.big=big?(Z.boss?"boss":"mini"):null; EXP.pause=3; expWaveDraw();
 }
 // un ennemi apparaît sous la forme qui correspond à son niveau (évolutions par niveau officielles, donnees/expedition/lignes.json)
@@ -9342,17 +9349,19 @@ setTimeout(async()=>{
 
 /* ===== Cartes d'Expédition : formes libres, chargement en jeu et mode « carte » (aperçu et dessin pour l'éditeur de cartes) =====
    Format d'une carte (donnees/expedition/cartes.json) :
-     {id, nom, env, w, h, zone:{c,r,runs}, obst:[[x,y,genre]...], spawns:[[x,y]...], depart:[x,y]}
+     {id, nom, env, w, h, zone:{c,r,runs}, obst:[[x,y,genre]...], spawns:[[x,y,vague,type]...], depart:[x,y]}
+   - un point d'apparition : vague = 0 (toutes), 1 à 3, ou 9 (vague finale) ; type = "e" (ennemis) ou "b" (mini-boss et boss).
    - w, h : taille en pixels (jusqu'à 4000) ; zone : grille de cellules de 8 px (1 = sol, 0 = mur) codée en longueurs de séries (la première série est du mur).
    - sans « zone » : ancienne carte rectangulaire (l'arène de l'environnement), toujours valable.
    Le mode « carte » (adresse ?carte, dans un cadre de l'éditeur) montre la carte avec le vrai rendu du jeu et laisse la dessiner ;
    il échange avec l'éditeur par messages (postMessage). Rien de tout cela n'a d'effet dans une partie normale. */
-const CARTE={on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false};
+const CARTE={vague:0,sel:null,on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false};
 const CARTE_GENRES=["rock","pillar","cactus","sandrock","crystal","obsidian"];
 const CARTE_SNAP=12, CARTE_MIN_SPAWNS=8, CELL=8, CARTE_MAX=4000, CARTE_MAXPX=12e6;
 const MASK={on:false,cs:CELL,cols:0,rows:0,data:null,near:null};
 const maskAt=(x,y)=>{if(!MASK.on)return true; const i=Math.floor(x/MASK.cs),j=Math.floor(y/MASK.cs); return i>=0&&j>=0&&i<MASK.cols&&j<MASK.rows&&MASK.data[j*MASK.cols+i]===1};
-const carteValide=c=>!!(c&&c.depart&&Array.isArray(c.spawns)&&c.spawns.length>=CARTE_MIN_SPAWNS&&Array.isArray(c.obst));
+const spType=p=>p[3]==="b"?"b":"e", spVague=p=>p[2]|0; // un point d'apparition : [x, y, vague, type]
+const carteValide=c=>!!(c&&c.depart&&Array.isArray(c.spawns)&&c.spawns.filter(p=>spType(p)==="e").length>=CARTE_MIN_SPAWNS&&Array.isArray(c.obst));
 
 // ---------- grille de forme : codage, plus proche case de sol, cadre de jeu ----------
 function zoneEnc(data,cols,rows){ const runs=[]; let cur=0,n=0; for(let i=0;i<data.length;i++){if(data[i]===cur)n++; else{runs.push(n); cur=data[i]; n=1}} runs.push(n); return {c:cols,r:rows,runs} }
@@ -9422,18 +9431,18 @@ function carteAppliquer(c){ // une carte en jeu
   if(c.zone)carteMonde(c); else{setArena(c.env||"prairie"); OBST.length=0}
   (c.obst||[]).forEach(o=>{if(OBK[o[2]])pushObst([o[0],o[1],0,o[2]])});
 }
-const carteDump=()=>({env:CARTE.env,w:WORLD.w,h:WORLD.h,zone:zoneEnc(MASK.data,MASK.cols,MASK.rows),obst:OBST.filter(o=>!o.dead).map(o=>[Math.round(o.x),Math.round(o.y),o.k]),spawns:CARTE.spawns.map(p=>[Math.round(p[0]),Math.round(p[1])]),depart:CARTE.depart?[Math.round(CARTE.depart[0]),Math.round(CARTE.depart[1])]:null});
+const carteDump=()=>({env:CARTE.env,w:WORLD.w,h:WORLD.h,zone:zoneEnc(MASK.data,MASK.cols,MASK.rows),obst:OBST.filter(o=>!o.dead).map(o=>[Math.round(o.x),Math.round(o.y),o.k]),spawns:CARTE.spawns.map(p=>[Math.round(p[0]),Math.round(p[1]),spVague(p),spType(p)]),depart:CARTE.depart?[Math.round(CARTE.depart[0]),Math.round(CARTE.depart[1])]:null});
 
 // ---------- contrôles : départ et apparitions sur le sol, chemin libre du départ jusqu'à chaque apparition ----------
 function carteVerif(){
-  const E=[], ok={depart:!!CARTE.depart,spawns:CARTE.spawns.length,libre:true,sol:0};
+  const E=[], nE=CARTE.spawns.filter(p=>spType(p)==="e").length, nB=CARTE.spawns.length-nE, ok={depart:!!CARTE.depart,spawns:nE,boss:nB,libre:true,sol:0};
   const S=CELL, W=MASK.cols, H=MASK.rows, blocked=new Uint8Array(W*H);
   for(let i=0;i<W*H;i++){if(!MASK.data[i])blocked[i]=1; else ok.sol++}
   OBST.forEach(o=>{if(o.dead)return; const r=o.r+9, i0=Math.max(0,Math.floor((o.x-r)/S)), i1=Math.min(W-1,Math.floor((o.x+r)/S)), j0=Math.max(0,Math.floor((o.y-r*ISO)/S)), j1=Math.min(H-1,Math.floor((o.y+r*ISO)/S));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(Math.hypot(o.x-(i+.5)*S,(o.y-(j+.5)*S)/ISO)<r)blocked[j*W+i]=1});
   if(ok.sol===0)E.push("Aucun sol : peins la forme de la carte");
   if(!CARTE.depart)E.push("Départ du joueur manquant");
-  if(CARTE.spawns.length<CARTE_MIN_SPAWNS)E.push("Il faut au moins "+CARTE_MIN_SPAWNS+" points d'apparition ("+CARTE.spawns.length+")");
+  if(nE<CARTE_MIN_SPAWNS)E.push("Il faut au moins "+CARTE_MIN_SPAWNS+" points d'apparition d'ennemis ("+nE+")");
   if(CARTE.depart){
     const cell=p=>[Math.min(W-1,Math.max(0,Math.floor(p[0]/S))),Math.min(H-1,Math.max(0,Math.floor(p[1]/S)))], seen=new Uint8Array(W*H), [sx,sy]=cell(CARTE.depart);
     if(!MASK.data[sy*W+sx]){ok.libre=false; E.push("Le départ du joueur n'est pas sur le sol")}
@@ -9444,7 +9453,7 @@ function carteVerif(){
   }
   return {...ok,erreurs:E};
 }
-const carteEnvoyer=()=>{try{parent.postMessage({t:"carte",carte:carteDump(),verif:carteVerif()},"*")}catch(_){}};
+const carteEnvoyer=()=>{try{const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; parent.postMessage({t:"carte",carte:carteDump(),verif:carteVerif(),sel:s?{v:spVague(s),t:spType(s)}:null,vague:CARTE.vague},"*")}catch(_){}};
 const carteVue=()=>{player.x=CARTE.cx; player.y=CARTE.cy};
 function carteAjuster(){ const k=Math.min(cv.width/WORLD.w,cv.height/WORLD.h)*.94; CARTE.zoom=Math.max(.1,Math.min(8,k)); PX=CARTE.zoom; CARTE.cx=WORLD.w/2; CARTE.cy=WORLD.h/2; carteVue() }
 
@@ -9455,7 +9464,9 @@ function carteDessin(){
   ctx.fillStyle="rgba(7,12,36,.16)"; for(let x=Math.ceil(x0/pas)*pas;x<=x1;x+=pas)ctx.fillRect(x,y0,1/Math.min(1,PX),y1-y0); for(let y=Math.ceil(y0/pas)*pas;y<=y1;y+=pas)ctx.fillRect(x0,y,x1-x0,1/Math.min(1,PX));
   ctx.fillStyle="rgba(255,228,94,.6)"; const ep=2/PX; ctx.fillRect(0,0,WORLD.w,ep); ctx.fillRect(0,WORLD.h-ep,WORLD.w,ep); ctx.fillRect(0,0,ep,WORLD.h); ctx.fillRect(WORLD.w-ep,0,ep,WORLD.h);
   const k=Math.max(1,1.5/PX);
-  CARTE.spawns.forEach(p=>{ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(12*k),Math.round(7*k),"#ff5a4a"); ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(8*k),Math.round(4*k),"#ff5a4a"); ctx.fillStyle="#fff"; ctx.fillRect(Math.round(p[0])-k,Math.round(p[1])-k,3*k,3*k)});
+  CARTE.spawns.forEach((p,i)=>{const b=spType(p)==="b", c=b?"#ffb02e":"#ff5a4a", R=b?18:12; ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(R*k),Math.round(R*.58*k),c); ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round((R-4)*k),Math.round((R-4)*.5*k),c); ctx.fillStyle="#fff"; ctx.fillRect(Math.round(p[0])-k,Math.round(p[1])-k,3*k,3*k);
+    const v=spVague(p), lab=(b?"B":"")+(v===9?"F":v?String(v):""); if(lab){ctx.font="bold "+Math.round(11*k)+"px sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#070c24"; ctx.fillText(lab,p[0]+1,p[1]-R*.6*k+1); ctx.fillStyle="#ffe45e"; ctx.fillText(lab,p[0],p[1]-R*.6*k)}
+    if(CARTE.sel&&CARTE.sel.k==="s"&&CARTE.sel.i===i){ctx.strokeStyle="#ffffff"; ctx.lineWidth=2/Math.min(1,PX); ctx.strokeRect(p[0]-(R+4)*k,p[1]-(R*.6+4)*k,(R+4)*2*k,(R*.6+4)*2*k)}});
   if(CARTE.depart){const [x,y]=CARTE.depart, s=7*k; ctx.fillStyle="#070c24"; ctx.fillRect(Math.round(x)-s,Math.round(y)-s,2*s,2*s); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(x)-s+2*k,Math.round(y)-s+2*k,2*s-4*k,2*s-4*k)}
   if(CARTE.rectA&&CARTE.hover){const a=CARTE.rectA, b=CARTE.hover; ctx.globalAlpha=.4; ctx.fillStyle=CARTE.rectA.mur?"#173a22":"#ffffff"; ctx.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); ctx.globalAlpha=1}
   if(CARTE.hover){const [x,y]=CARTE.hover, f=["brush","wall"].includes(CARTE.tool); ctx.globalAlpha=.7; ctx.strokeStyle="#fff"; ctx.lineWidth=1/Math.min(1,PX); if(f){const r=CARTE.brush*CELL/2; ctx.strokeRect(x-r,y-r,2*r,2*r)} else ellipseLine(Math.round(x),Math.round(y),Math.round(9*k),Math.round(5*k),"#ffffff"); ctx.globalAlpha=1}
@@ -9469,7 +9480,7 @@ function carteModeEditeur(){
   entities=[]; fighters=[]; player=makeEntity("treecko",0,0,false); player.fighter=false; foe=player;
   addEventListener("resize",()=>{PX=CARTE.zoom});
   const charger=c=>{ CARTE.env=c.env||"prairie"; carteMonde(c); (c.obst||[]).forEach(o=>{if(OBK[o[2]])pushObst([o[0],o[1],0,o[2]])});
-    CARTE.spawns=(c.spawns||[]).map(p=>p.slice()); CARTE.depart=c.depart?c.depart.slice():null; carteAjuster(); carteEnvoyer()};
+    CARTE.sel=null; CARTE.spawns=(c.spawns||[]).map(p=>[p[0],p[1],spVague(p),spType(p)]); CARTE.depart=c.depart?c.depart.slice():null; carteAjuster(); carteEnvoyer()};
   const pos=e=>{const w=toWorld({clientX:e.clientX,clientY:e.clientY}); return [w.wx,w.wy]};
   const snap=p=>[Math.round(p[0]/CARTE_SNAP)*CARTE_SNAP,Math.round(p[1]/CARTE_SNAP)*CARTE_SNAP];
   const proche=p=>{ let best=null,bd=1e9; const t=(d,r,k,i)=>{if(d<r&&d<bd){bd=d;best={k,i}}};
@@ -9477,8 +9488,8 @@ function carteModeEditeur(){
     CARTE.spawns.forEach((s,i)=>t(Math.hypot(s[0]-p[0],(s[1]-p[1])/ISO),14,"s",i));
     if(CARTE.depart)t(Math.hypot(CARTE.depart[0]-p[0],(CARTE.depart[1]-p[1])/ISO),12,"d",0);
     return best};
-  const retirer=h=>{if(h.k==="o")OBST.splice(h.i,1); else if(h.k==="s")CARTE.spawns.splice(h.i,1); else CARTE.depart=null};
-  const bouger=(h,p)=>{if(h.k==="o"){OBST[h.i].x=p[0];OBST[h.i].y=p[1]} else if(h.k==="s")CARTE.spawns[h.i]=p; else CARTE.depart=p};
+  const retirer=h=>{CARTE.sel=null; if(h.k==="o")OBST.splice(h.i,1); else if(h.k==="s")CARTE.spawns.splice(h.i,1); else CARTE.depart=null};
+  const bouger=(h,p)=>{if(h.k==="o"){OBST[h.i].x=p[0];OBST[h.i].y=p[1]} else if(h.k==="s"){CARTE.spawns[h.i][0]=p[0];CARTE.spawns[h.i][1]=p[1]} else CARTE.depart=p};
   const formeOutil=()=>["brush","rect","wall"].includes(CARTE.tool);
   // peinture de la grille : un carré de CARTE.brush cellules centré sur le point ; le sol est redessiné sur la zone touchée seulement
   const peindre=(p,val)=>{const n=CARTE.brush, i0=Math.floor(p[0]/CELL-n/2+.5), j0=Math.floor(p[1]/CELL-n/2+.5); cellules(i0,j0,i0+n,j0+n,val)};
@@ -9498,9 +9509,10 @@ function carteModeEditeur(){
     const p=snap(pb), h=proche(p);
     if(e.button===2||CARTE.tool==="erase"){if(h){retirer(h); carteEnvoyer()} return}
     if(e.button!==0)return;
-    if(h){CARTE.drag=h; try{stage.setPointerCapture(e.pointerId)}catch(_){} return}
+    if(h){CARTE.drag=h; CARTE.sel=h.k==="s"?h:null; try{stage.setPointerCapture(e.pointerId)}catch(_){} carteEnvoyer(); return}
+    CARTE.sel=null; // clic dans le vide : plus de point sélectionné, le sélecteur de vague règle les prochains points
     if(!maskAt(p[0],p[1]))return;
-    if(CARTE.tool==="spawn")CARTE.spawns.push(p); else if(CARTE.tool==="start")CARTE.depart=p; else if(CARTE_GENRES.includes(CARTE.tool))pushObst([p[0],p[1],0,CARTE.tool]);
+    if(CARTE.tool==="spawn"||CARTE.tool==="boss"){CARTE.spawns.push([p[0],p[1],CARTE.vague,CARTE.tool==="boss"?"b":"e"])} else if(CARTE.tool==="start")CARTE.depart=p; else if(CARTE_GENRES.includes(CARTE.tool))pushObst([p[0],p[1],0,CARTE.tool]);
     carteEnvoyer()},true);
   stage.addEventListener("pointermove",e=>{arret(e); const pb=pos(e), p=snap(pb); CARTE.hover=formeOutil()?[Math.round(pb[0]/CELL)*CELL,Math.round(pb[1]/CELL)*CELL]:p;
     if(CARTE.pan){const d=cv.width/stage.getBoundingClientRect().width; CARTE.cx-=(e.clientX-CARTE.pan.x)*d/PX; CARTE.cy-=(e.clientY-CARTE.pan.y)*d/PX; CARTE.pan={x:e.clientX,y:e.clientY}; carteVue(); return}
@@ -9516,7 +9528,8 @@ function carteModeEditeur(){
     CARTE.zoom=Math.max(.1,Math.min(8,CARTE.zoom*(e.deltaY<0?1.2:1/1.2))); PX=CARTE.zoom; CARTE.cx=w[0]-sx/PX+cv.width/PX/2; CARTE.cy=w[1]-sy/PX+cv.height/PX/2; carteVue()},{passive:false,capture:true});
   addEventListener("keydown",e=>{if(e.code==="Space"){CARTE.espace=true; e.preventDefault()}},true); addEventListener("keyup",e=>{if(e.code==="Space")CARTE.espace=false},true);
   addEventListener("message",e=>{ if(e.source!==parent)return; const m=e.data||{};
-    if(m.t==="outil")CARTE.tool=m.v; else if(m.t==="pinceau")CARTE.brush=Math.max(1,Math.min(40,m.v|0));
+    if(m.t==="vague"){const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; if(s){s[2]=m.v|0; carteEnvoyer()} else CARTE.vague=m.v|0}
+    else if(m.t==="outil")CARTE.tool=m.v; else if(m.t==="pinceau")CARTE.brush=Math.max(1,Math.min(40,m.v|0));
     else if(m.t==="charger")charger(m.carte||{});
     else if(m.t==="env"){const d=carteDump(); d.env=m.v; d.obst=[]; d.spawns=[]; d.depart=null; charger(d)}
     else if(m.t==="taille"){ // nouvelle taille : le contenu reste en haut à gauche

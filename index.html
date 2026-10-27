@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.277 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.278 · 27/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -9180,19 +9180,22 @@ function expZonesInit(){
   EXP.zi=0; EXP.marks=[]; expWaveDraw();
 }
 const zoneVivants=g=>fighters.filter(e=>e.zg===g&&!e.out).length;
-function zoneLot(g,k,premier){ // les k prochains points de la zone (un ennemi chacun), + le boss de la zone au premier lot
-  const M=g.queue.splice(0,k).map(p=>[p[0],p[1]]);
-  g.big=null; if(premier&&g.bs.length){const b=g.bs[Math.floor(Math.random()*g.bs.length)]; M.unshift([b[0],b[1]]); g.big=(g.v===9&&EXP_ZONE[R.ci].boss)?"boss":"mini"}
-  g.marks=M; g.pending=g.queue.length; g.pause=1.2;
+function zoneLot(g,k){ // les k prochains points de la zone (un ennemi chacun)
+  g.big=null; g.marks=g.queue.splice(0,k).map(p=>[p[0],p[1]]); g.pending=g.queue.length; g.pause=1.2;
+}
+function zoneBoss(g){ // le boss de la zone apparaît quand ses ennemis sont tous vaincus (choix du propriétaire)
+  const b=g.bs[Math.floor(Math.random()*g.bs.length)]; g.bossFait=true; g.marks=[[b[0],b[1]]]; g.big=(g.v===9&&EXP_ZONE[R.ci].boss)?"boss":"mini"; g.pause=1.2;
+  showLog(XT("Le boss de la zone arrive !","The area boss is coming!"),2200);
 }
 function expZonesTick(dt){
   const g=EXP.zg[EXP.zi];
   if(!g){EXP.marks=[]; if(!EXP.end&&!expAlive().length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} return}
-  if(!g.trig){ if(Math.hypot(player.x-g.c[0],(player.y-g.c[1])/ISO)<=zoneRayon()){g.trig=true; zoneLot(g,Math.min(g.queue.length,EXP_MAXLIVE),true); try{sfxUI("go")}catch(_){}} }
+  if(!g.trig){ if(Math.hypot(player.x-g.c[0],(player.y-g.c[1])/ISO)<=zoneRayon()){g.trig=true; zoneLot(g,Math.min(g.queue.length,EXP_MAXLIVE)); try{sfxUI("go")}catch(_){}} }
   else if(g.marks.length){ g.pause-=dt; if(g.pause<=0){expSpawn(g.marks,g.big,g); g.marks=[]; g.big=null} }
   else{
     const a=zoneVivants(g);
-    if(g.pending>0&&a<=3)zoneLot(g,Math.min(g.pending,Math.max(1,EXP_MAXLIVE-a),6),false);
+    if(g.pending>0&&a<=3)zoneLot(g,Math.min(g.pending,Math.max(1,EXP_MAXLIVE-a),6));
+    else if(!a&&g.pending<=0&&g.bs.length&&!g.bossFait)zoneBoss(g);
     else if(!a&&g.pending<=0){
       g.done=true; expWaveCleared(g.foes); EXP.zi++;
       if(EXP.zi>=EXP.zg.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else showLog(XT("Zone libérée : suis la flèche","Area cleared: follow the arrow"),2600)

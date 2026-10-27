@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.276 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.277 · 27/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -9036,6 +9036,8 @@ function expFight(){
   // carte du combat : le combat 1 à 3 prend les cartes de la Prairie dans l'ordre, le boss en tire une au hasard ; refaire un combat perdu garde la même carte
   const lst=expCartes("prairie"); if(R.cidCi!==R.ci){R.cidCi=R.ci; R.cid=lst.length?(Z.boss?lst[Math.floor(Math.random()*lst.length)]:lst[R.ci%lst.length]).id:null}
   const C=EXP.carteForce||(R.cid&&lst.find(c=>c.id===R.cid))||null; EXP.carte=C;
+  // mode zones : une carte dont les points d'apparition sont rattachés à des vagues ; une flèche mène à la zone suivante et la vague apparaît quand le joueur y arrive
+  EXP.zm=!!C&&C.approche!==false&&C.spawns.some(p=>(p[2]|0)>0&&(p[3]==="b"?"b":"e")==="e"); EXP.zg=[]; EXP.zi=0;
   expClose(); expHide(); setArena("prairie"); if(C)carteAppliquer(C); matchMode="ffa"; endShown=false;
   entities=[]; fighters=[]; resetRound(); introPending=false; cdT=0; vsT=0; hideVersus(); // venir d'un autre mode : ni écran VS ni décompte en cours
   const A=actives(), keys=A.map(m=>m.key), [sx,sy]=C?C.depart:[(AB.x0+AB.x1)/2,(AB.y0+AB.y1)/2+10];
@@ -9045,7 +9047,7 @@ function expFight(){
   const first=player.team.findIndex(s=>!s.dead); loadSlot(player,first,false); player.lv=player.team[first].lv; player._stK=null;
   entities=[player]; fighters=[player]; foe=player;
   if(typeof applyKit==="function")applyKit();
-  musicSet("battle"); showBanner(XT("PRAIRIE","MEADOW"),"win"); expNextWave();
+  musicSet("battle"); showBanner(XT("PRAIRIE","MEADOW"),"win"); if(EXP.zm){expZonesInit(); setTimeout(()=>{if(EXP.zm)hideBanner()},1200)} else expNextWave(); // mode zones : bandeau court, pour voir la flèche
 }
 function expCartes(env){ return ((EXP_DATA.cartes&&EXP_DATA.cartes.cartes)||[]).filter(c=>c.env===env&&carteValide(c)) } // seules les cartes complètes servent en jeu
 // vague en cours pour les points d'apparition d'une carte : son numéro (1, 2, 3...) et 9 si c'est la vague finale du combat
@@ -9067,20 +9069,20 @@ function expNextWave(){ // 3 secondes de pause, signal des points d'apparition, 
 }
 // un ennemi apparaît sous la forme qui correspond à son niveau (évolutions par niveau officielles, donnees/expedition/lignes.json)
 function expEvolved(base,lv){let k=base; for(const [s,n] of (EXP_DATA.lignes[base]||[]))if(lv>=n&&SPECIES[s])k=s; return k}
-function expSpawn(){
+function expSpawn(M=EXP.marks,bigKind=EXP.big,g=null){
   const pool=EXP_DATA.proto.ennemis, base=Math.max(EXP_ZONE[R.ci].lv,avgLv());
-  EXP.marks.forEach(([x,y],i)=>{
-    const big=EXP.big&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXP.big==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
-    const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXP.big:null;
-    e.dmgMul=big?1:EXP_ENEMY.dmg; e.spdMul=big?EXP_ENEMY.spdBoss:EXP_ENEMY.spd; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXP.big]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
+  M.forEach(([x,y],i)=>{
+    const EXPbig=bigKind, big=EXPbig&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXPbig==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
+    const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXPbig:null; e.zg=g;
+    e.dmgMul=big?1:EXP_ENEMY.dmg; e.spdMul=big?EXP_ENEMY.spdBoss:EXP_ENEMY.spd; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXPbig]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
     const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(big)k.sort((a,b)=>(SPL[b].power||0)-(SPL[a].power||0)); // boss : ses capacités les plus fortes d'abord if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
     e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e); if(big)e.sarmor=true;
     entities.push(e); fighters.push(e); spawnFx(e,!!big); if(big)EXP.boss=e;
   });
-  EXP.marks=[]; expWaveDraw();
+  if(M===EXP.marks)EXP.marks=[]; expWaveDraw();
 }
-function expWaveCleared(){ // XP après chaque vague : 100 % pour les actifs, 50 % pour la réserve
-  const gained=Math.round(EXP.waveFoes.reduce((s,e)=>s+e.lv*45/7*(e.big?2:1),0)*EXP_ZONE[R.ci].xp); EXP.waveFoes=[];
+function expWaveCleared(foes=EXP.waveFoes){ // XP après chaque vague (ou zone) : 100 % pour les actifs, 50 % pour la réserve
+  const gained=Math.round(foes.reduce((s,e)=>s+e.lv*45/7*(e.big?2:1),0)*EXP_ZONE[R.ci].xp); if(foes===EXP.waveFoes)EXP.waveFoes=[];
   expSyncBack(); const ups=[];
   R.team.forEach(m=>{if(m.ko)return; const before=m.lv; m.xp+=Math.round(gained*(m.active?1:.5)); m.lv=lvOfXp(m.xp);
     if(m.lv>before){m.evoWait=false; const mx0=slotMax(m.key,before), mx=slotMax(m.key,m.lv); m.hp=Math.min(mx,m.hp+mx-mx0); ups.push(SPECIES[m.key].name+" "+XT("niv. ","lv. ")+m.lv);
@@ -9126,7 +9128,7 @@ FX_UPDATERS.push(dt=>{
 function expOut(t){ // ennemi éliminé, ou équipe du joueur entièrement K.O.
   if(t.out||EXP.end)return; t.out=true; t.ko=1.1; if(t!==player)deathFx(t);
   if(t===player){EXP.end="lose"; EXP.endT=1.6; showBanner(XT("DÉFAITE","DEFEAT"),"lose"); return}
-  EXP.beaten.push(t.key); (EXP.waveFoes=EXP.waveFoes||[]).push(t); const gain=Math.round((2+t.lv/2)*(t.big?3:1)); R.money+=gain; pops.push({x:t.x,y:t.y-t.sp.body*2,t:0,txt:"+₽"+gain,col:"#ffe45e"});
+  EXP.beaten.push(t.key); (t.zg?t.zg.foes:(EXP.waveFoes=EXP.waveFoes||[])).push(t); const gain=Math.round((2+t.lv/2)*(t.big?3:1)); R.money+=gain; pops.push({x:t.x,y:t.y-t.sp.body*2,t:0,txt:"+₽"+gain,col:"#ffe45e"});
 }
 // ---------- foule : les ennemis entourent le joueur au lieu de s'empiler, et n'attaquent pas tous en même temps ----------
 // Chaque ennemi prend une place sur un cercle autour du joueur (triés par angle : pas de croisement), le cercle tourne lentement.
@@ -9168,9 +9170,48 @@ function expCrowdGo(e){
   if(e.warned){e.warned=false; return true}
   e.warned=true; e.warn=.3; e.bot.think=.3; return false;
 }
+// ---------- mode zones : une flèche mène à la zone de la vague suivante, la vague apparaît quand le joueur y arrive ----------
+const zoneRayon=()=>(EXP.carte&&EXP.carte.rayon)||160;
+function expZonesInit(){
+  const C=EXP.carte, Z=EXP_ZONE[R.ci], typ=p=>p[3]==="b"?"b":"e";
+  const vs=[...new Set(C.spawns.filter(p=>typ(p)==="e"&&(p[2]|0)>0).map(p=>p[2]|0))].sort((a,b)=>(a===9?99:a)-(b===9?99:b));
+  EXP.zg=vs.map(v=>{const pts=C.spawns.filter(p=>typ(p)==="e"&&(p[2]|0)===v), bs=C.spawns.filter(p=>typ(p)==="b"&&(p[2]|0)===v), all=pts.concat(bs), n=pts.length; // 1 point d'apparition = 1 ennemi (choix du propriétaire) : on contrôle le nombre en posant les points
+    return {v,pts,bs,n,queue:pts.slice(),pending:n,trig:false,done:false,marks:[],pause:0,big:null,foes:[],c:[all.reduce((s,p)=>s+p[0],0)/all.length,all.reduce((s,p)=>s+p[1],0)/all.length]}});
+  EXP.zi=0; EXP.marks=[]; expWaveDraw();
+}
+const zoneVivants=g=>fighters.filter(e=>e.zg===g&&!e.out).length;
+function zoneLot(g,k,premier){ // les k prochains points de la zone (un ennemi chacun), + le boss de la zone au premier lot
+  const M=g.queue.splice(0,k).map(p=>[p[0],p[1]]);
+  g.big=null; if(premier&&g.bs.length){const b=g.bs[Math.floor(Math.random()*g.bs.length)]; M.unshift([b[0],b[1]]); g.big=(g.v===9&&EXP_ZONE[R.ci].boss)?"boss":"mini"}
+  g.marks=M; g.pending=g.queue.length; g.pause=1.2;
+}
+function expZonesTick(dt){
+  const g=EXP.zg[EXP.zi];
+  if(!g){EXP.marks=[]; if(!EXP.end&&!expAlive().length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} return}
+  if(!g.trig){ if(Math.hypot(player.x-g.c[0],(player.y-g.c[1])/ISO)<=zoneRayon()){g.trig=true; zoneLot(g,Math.min(g.queue.length,EXP_MAXLIVE),true); try{sfxUI("go")}catch(_){}} }
+  else if(g.marks.length){ g.pause-=dt; if(g.pause<=0){expSpawn(g.marks,g.big,g); g.marks=[]; g.big=null} }
+  else{
+    const a=zoneVivants(g);
+    if(g.pending>0&&a<=3)zoneLot(g,Math.min(g.pending,Math.max(1,EXP_MAXLIVE-a),6),false);
+    else if(!a&&g.pending<=0){
+      g.done=true; expWaveCleared(g.foes); EXP.zi++;
+      if(EXP.zi>=EXP.zg.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else showLog(XT("Zone libérée : suis la flèche","Area cleared: follow the arrow"),2600)
+    }
+  }
+  EXP.marks=g.marks; expWaveDraw();
+}
+function expFleche(t){ // balise de la zone à rejoindre et flèche autour du joueur
+  if(!EXP.zm)return; const g=EXP.zg[EXP.zi]; if(!g||g.trig||EXP.end)return;
+  const R0=zoneRayon(), pulse=.55+.25*Math.sin(t*5), dx=g.c[0]-player.x, dy=(g.c[1]-player.y)/ISO, d=Math.hypot(dx,dy)||1, ux=dx/d, uy=dy/d;
+  ctx.globalAlpha=pulse; ellipseLine(Math.round(g.c[0]),Math.round(g.c[1]),R0,Math.round(R0*ISO),"#ffe45e"); ellipseLine(Math.round(g.c[0]),Math.round(g.c[1]),Math.round(R0*.55),Math.round(R0*.55*ISO),"#ffffff"); ctx.globalAlpha=1;
+  const px=player.x+ux*46, py=player.y-8+uy*46*ISO, sx=-uy, sy=ux*ISO, k=1; // pointe, base, ailes
+  ctx.beginPath(); ctx.moveTo(px+ux*12,py+uy*12*ISO); ctx.lineTo(px-ux*6+sx*8,py-uy*6*ISO+sy*8); ctx.lineTo(px-ux*2,py-uy*2*ISO); ctx.lineTo(px-ux*6-sx*8,py-uy*6*ISO-sy*8); ctx.closePath();
+  ctx.fillStyle="#ffe45e"; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle="#070c24"; ctx.stroke();
+}
 function expFightTick(dt){
   if(EXP.end){EXP.endT-=dt; if(EXP.endT<=0){const w=EXP.end; EXP.end=null; w==="win"?expWin():expLose()} return}
   if(EXP.pause>0){EXP.pause-=dt; if(EXP.pause<=0)expSpawn(); expWaveDraw(); return}
+  if(EXP.zm){expCrowdTick(dt); expZonesTick(dt); return}
   expCrowdTick(dt);
   const alive=expAlive().length;
   if(EXP.pending>0&&alive<=3){ // renfort : un nouveau groupe arrive (jamais plus de EXP_MAXLIVE vivants)
@@ -9183,6 +9224,7 @@ function expFightTick(dt){
   expWaveDraw();
 }
 function expWaveDraw(){
+  if(EXP.zm){const g=EXP.zg[EXP.zi], n=EXP.zg.length, a=expAlive().length+(g?g.pending:0), h=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Zone ","Area ")+Math.min(EXP.zi+1,n)+' / '+n+'</b>'+(g&&!g.trig?' · '+XT("suis la flèche","follow the arrow"):' · '+a+XT(" ennemi"+(a>1?"s":"")+" restant"+(a>1?"s":"")," enem"+(a>1?"ies":"y")+" left")); if(expWave.dataset.v!==h){expWave.dataset.v=h; expWave.innerHTML=h} expWave.hidden=!!EXP.end; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out)); return}
   const n=expAlive().length+(EXP.pending||0)+EXP.marks.length, txt=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.wave+1,EXP.waves.length)+' / '+EXP.waves.length+'</b>'
     +(EXP.pause>0?' · '+XT("arrivée dans ","incoming in ")+Math.ceil(EXP.pause):' · '+n+XT(" ennemi"+(n>1?"s":"")+" restant"+(n>1?"s":"")," enem"+(n>1?"ies":"y")+" left"));
   if(expWave.dataset.v!==txt){expWave.dataset.v=txt; expWave.innerHTML=txt} expWave.hidden=!!EXP.end||EXP.wave>=EXP.waves.length; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out));
@@ -9252,6 +9294,7 @@ setTimeout(()=>{
     const t=performance.now()/1000;
     if(EXP.scene==="camp")drawCamp(t);
     if(EXP.scene==="fight"){
+      expFleche(t);
       EXP.marks.forEach(([x,y],i)=>{ctx.globalAlpha=.55+.35*Math.sin(t*8); ellipseLine(x,y,12,7,"#ff5a4a"); ellipseLine(x,y,8,4,EXP.big&&i===0?"#ffb36b":"#ff5a4a"); ctx.globalAlpha=1});
       fighters.forEach(e=>{if(e.warn>0&&!e.out){const R0=Math.round(e.sp.body*.9)+5; ctx.globalAlpha=.85; ellipseLine(Math.round(e.x),Math.round(e.y)+1,R0,Math.max(2,Math.round(R0*ISO)),"#ff3a2a"); ellipseLine(Math.round(e.x),Math.round(e.y)+1,R0-2,Math.max(1,Math.round((R0-2)*ISO)),"#ff3a2a"); ctx.fillStyle="#ff3a2a"; ctx.fillRect(Math.round(e.x)-1,Math.round(e.y-e.sp.body*2-8),2,5); ctx.fillRect(Math.round(e.x)-1,Math.round(e.y-e.sp.body*2-1),2,2); ctx.globalAlpha=1}});
       COINS.forEach(c=>{ctx.fillStyle="#ffd23c"; ctx.fillRect(Math.round(c.x)-1,Math.round(c.y)-1,3,3); ctx.fillStyle="#fff3a0"; ctx.fillRect(Math.round(c.x),Math.round(c.y)-1,1,1)});
@@ -9355,7 +9398,7 @@ setTimeout(async()=>{
    - sans « zone » : ancienne carte rectangulaire (l'arène de l'environnement), toujours valable.
    Le mode « carte » (adresse ?carte, dans un cadre de l'éditeur) montre la carte avec le vrai rendu du jeu et laisse la dessiner ;
    il échange avec l'éditeur par messages (postMessage). Rien de tout cela n'a d'effet dans une partie normale. */
-const CARTE={vague:0,sel:null,on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false};
+const CARTE={rayon:160,vague:0,sel:null,on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false};
 const CARTE_GENRES=["rock","pillar","cactus","sandrock","crystal","obsidian"];
 const CARTE_SNAP=12, CARTE_MIN_SPAWNS=8, CELL=8, CARTE_MAX=4000, CARTE_MAXPX=12e6;
 const MASK={on:false,cs:CELL,cols:0,rows:0,data:null,near:null};
@@ -9459,13 +9502,14 @@ function carteAjuster(){ const k=Math.min(cv.width/WORLD.w,cv.height/WORLD.h)*.9
 
 // ---------- dessin par-dessus le rendu du jeu : grille, apparitions, départ, aperçus ----------
 function carteDessin(){
-  ctx.save();
+  CARTE.cercle=false; ctx.save();
   const vw=cv.width/PX, vh=cv.height/PX, x0=Math.max(0,cam.x), y0=Math.max(0,cam.y), x1=Math.min(WORLD.w,cam.x+vw), y1=Math.min(WORLD.h,cam.y+vh), pas=PX>=1.5?24:PX>=.6?96:384;
   ctx.fillStyle="rgba(7,12,36,.16)"; for(let x=Math.ceil(x0/pas)*pas;x<=x1;x+=pas)ctx.fillRect(x,y0,1/Math.min(1,PX),y1-y0); for(let y=Math.ceil(y0/pas)*pas;y<=y1;y+=pas)ctx.fillRect(x0,y,x1-x0,1/Math.min(1,PX));
   ctx.fillStyle="rgba(255,228,94,.6)"; const ep=2/PX; ctx.fillRect(0,0,WORLD.w,ep); ctx.fillRect(0,WORLD.h-ep,WORLD.w,ep); ctx.fillRect(0,0,ep,WORLD.h); ctx.fillRect(WORLD.w-ep,0,ep,WORLD.h);
   const k=Math.max(1,1.5/PX);
   CARTE.spawns.forEach((p,i)=>{const b=spType(p)==="b", c=b?"#ffb02e":"#ff5a4a", R=b?18:12; ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(R*k),Math.round(R*.58*k),c); ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round((R-4)*k),Math.round((R-4)*.5*k),c); ctx.fillStyle="#fff"; ctx.fillRect(Math.round(p[0])-k,Math.round(p[1])-k,3*k,3*k);
     const v=spVague(p), lab=(b?"B":"")+(v===9?"F":v?String(v):""); if(lab){ctx.font="bold "+Math.round(11*k)+"px sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#070c24"; ctx.fillText(lab,p[0]+1,p[1]-R*.6*k+1); ctx.fillStyle="#ffe45e"; ctx.fillText(lab,p[0],p[1]-R*.6*k)}
+    if(CARTE.sel&&CARTE.sel.k==="s"&&CARTE.sel.i===i&&!CARTE.cercle){CARTE.cercle=true; const gp=CARTE.spawns.filter(q=>spVague(q)===spVague(p)&&spVague(p)>0); if(gp.length){const cx=gp.reduce((s,q)=>s+q[0],0)/gp.length, cy=gp.reduce((s,q)=>s+q[1],0)/gp.length; ctx.save(); ctx.globalAlpha=.7; ellipseLine(Math.round(cx),Math.round(cy),CARTE.rayon,Math.round(CARTE.rayon*ISO),"#ffe45e"); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(cx)-2*k,Math.round(cy)-2*k,4*k,4*k); ctx.restore()}}
     if(CARTE.sel&&CARTE.sel.k==="s"&&CARTE.sel.i===i){ctx.strokeStyle="#ffffff"; ctx.lineWidth=2/Math.min(1,PX); ctx.strokeRect(p[0]-(R+4)*k,p[1]-(R*.6+4)*k,(R+4)*2*k,(R*.6+4)*2*k)}});
   if(CARTE.depart){const [x,y]=CARTE.depart, s=7*k; ctx.fillStyle="#070c24"; ctx.fillRect(Math.round(x)-s,Math.round(y)-s,2*s,2*s); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(x)-s+2*k,Math.round(y)-s+2*k,2*s-4*k,2*s-4*k)}
   if(CARTE.rectA&&CARTE.hover){const a=CARTE.rectA, b=CARTE.hover; ctx.globalAlpha=.4; ctx.fillStyle=CARTE.rectA.mur?"#173a22":"#ffffff"; ctx.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); ctx.globalAlpha=1}
@@ -9528,7 +9572,8 @@ function carteModeEditeur(){
     CARTE.zoom=Math.max(.1,Math.min(8,CARTE.zoom*(e.deltaY<0?1.2:1/1.2))); PX=CARTE.zoom; CARTE.cx=w[0]-sx/PX+cv.width/PX/2; CARTE.cy=w[1]-sy/PX+cv.height/PX/2; carteVue()},{passive:false,capture:true});
   addEventListener("keydown",e=>{if(e.code==="Space"){CARTE.espace=true; e.preventDefault()}},true); addEventListener("keyup",e=>{if(e.code==="Space")CARTE.espace=false},true);
   addEventListener("message",e=>{ if(e.source!==parent)return; const m=e.data||{};
-    if(m.t==="vague"){const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; if(s){s[2]=m.v|0; carteEnvoyer()} else CARTE.vague=m.v|0}
+    if(m.t==="rayon")CARTE.rayon=Math.max(40,Math.min(2000,m.v|0));
+    else if(m.t==="vague"){const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; if(s){s[2]=m.v|0; carteEnvoyer()} else CARTE.vague=m.v|0}
     else if(m.t==="outil")CARTE.tool=m.v; else if(m.t==="pinceau")CARTE.brush=Math.max(1,Math.min(40,m.v|0));
     else if(m.t==="charger")charger(m.carte||{});
     else if(m.t==="env"){const d=carteDump(); d.env=m.v; d.obst=[]; d.spawns=[]; d.depart=null; charger(d)}

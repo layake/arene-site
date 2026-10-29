@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.278 · 27/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.279 · 29/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -9399,22 +9399,44 @@ setTimeout(async()=>{
    - un point d'apparition : vague = 0 (toutes), 1 à 3, ou 9 (vague finale) ; type = "e" (ennemis) ou "b" (mini-boss et boss).
    - w, h : taille en pixels (jusqu'à 4000) ; zone : grille de cellules de 8 px (1 = sol, 0 = mur) codée en longueurs de séries (la première série est du mur).
    - sans « zone » : ancienne carte rectangulaire (l'arène de l'environnement), toujours valable.
+   - sol (facultatif) : type de sol de chaque cellule (0 à 4, voir SOLS), en paires [type, nombre, type, nombre...] ; absent = tout en type 0.
+   - deco (facultatif) : [[x,y,genre]...], genre 0 à 3 (voir DECOS) ; de l'image seulement, rien ne bloque.
    Le mode « carte » (adresse ?carte, dans un cadre de l'éditeur) montre la carte avec le vrai rendu du jeu et laisse la dessiner ;
    il échange avec l'éditeur par messages (postMessage). Rien de tout cela n'a d'effet dans une partie normale. */
-const CARTE={rayon:160,vague:0,sel:null,on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false};
+const CARTE={rayon:160,vague:0,sel:null,on:false,tool:"brush",env:"prairie",spawns:[],depart:null,drag:null,hover:null,brush:3,zoom:2,cx:0,cy:0,rectA:null,last:null,pan:null,stroke:false,espace:false,
+  deco:[],solT:1,decoK:0,densite:1,cal:{sol:true,deco:true,elem:true}};
 const CARTE_GENRES=["rock","pillar","cactus","sandrock","crystal","obsidian"];
-const CARTE_SNAP=12, CARTE_MIN_SPAWNS=8, CELL=8, CARTE_MAX=4000, CARTE_MAXPX=12e6;
-const MASK={on:false,cs:CELL,cols:0,rows:0,data:null,near:null};
-const maskAt=(x,y)=>{if(!MASK.on)return true; const i=Math.floor(x/MASK.cs),j=Math.floor(y/MASK.cs); return i>=0&&j>=0&&i<MASK.cols&&j<MASK.rows&&MASK.data[j*MASK.cols+i]===1};
+const CARTE_SNAP=12, CARTE_MIN_SPAWNS=8, CELL=8, CARTE_MAX=4000, CARTE_MAXPX=12e6, DECO_MAX=3000;
+// types de sol par environnement : le 0 est le sol de l'arène (c = couleur de la pastille) ; c = fond, taches, motif ; b = on n'y marche pas (les attaques passent)
+const SOLS={
+  prairie:[{n:"Herbe",c:["#6cbf5a"]},{n:"Herbe haute",c:["#3f9a45","#378c3e","#2a7333"],m:"brin"},{n:"Chemin",c:["#c79a5b","#bb8e50","#a07443"],m:"grain"},{n:"Sable",c:["#e8d28a","#dcc47a","#c9ae66"],m:"grain"},{n:"Eau",c:["#3d86d8","#377cca","#8cc4ff"],m:"vague",b:1}],
+  desert:[{n:"Sable",c:["#e0c080"]},{n:"Dune",c:["#f0d898","#e6cc88","#d0b06a"],m:"vague"},{n:"Roche",c:["#9a7a5a","#8e7052","#6e543c"],m:"grain"},{n:"Dalles",c:["#c8a878","#bd9d6e","#8a7050"],m:"dalle"},{n:"Oasis",c:["#3d9ad0","#368cc2","#9ad8ff"],m:"vague",b:1}],
+  glace:[{n:"Glace",c:["#cfe6f4"]},{n:"Neige",c:["#eef4fb","#e2ebf6","#c4d4e8"],m:"grain"},{n:"Glace vive",c:["#a8d8f0","#9ccfea","#ffffff"],m:"eclat"},{n:"Roche",c:["#7a8898","#707e8e","#56626e"],m:"grain"},{n:"Eau glacée",c:["#2a68a8","#26609c","#7ab4e8"],m:"vague",b:1}],
+  volcan:[{n:"Roche",c:["#4a3e44"]},{n:"Cendre",c:["#5a5258","#524a50","#3e383c"],m:"grain"},{n:"Basalte",c:["#3a3440","#342e3a","#4e4858"],m:"dalle"},{n:"Braises",c:["#5a3a30","#52342b","#ff7a1a"],m:"grain"},{n:"Lave",c:["#e2541a","#d24a18","#ffe27a"],m:"vague",b:1}]};
+// décor : [nom, forme, couleur, couleur d'ombre] ; formes en petits dessins (a = couleur, b = ombre)
+const DECOS={
+  prairie:[["Fleur blanche","fleur","#ffffff","#ffd23a"],["Fleur rose","fleur","#ff8ac8","#fff0a0"],["Caillou","caillou","#a4a4a4","#646464"],["Touffe","touffe","#4aa84e","#2a7333"]],
+  desert:[["Os","os","#efe6d0","#a89a80"],["Caillou","caillou","#a8865e","#6e543c"],["Touffe sèche","touffe","#b8a050","#8a7638"],["Fleur de cactus","fleur","#ff6a8a","#ffe45e"]],
+  glace:[["Cristal","cristal","#bfeaff","#5aa8d8"],["Caillou","caillou","#8a98a8","#56626e"],["Touffe gelée","touffe","#9ab8c8","#6a8898"],["Fleur des neiges","fleur","#ffffff","#8fe3ff"]],
+  volcan:[["Braise","cristal","#ff7a1a","#ffe27a"],["Caillou","caillou","#5e565c","#2e2a34"],["Os","os","#d8cfc0","#8a8070"],["Touffe brûlée","touffe","#6a5a4a","#3a2e26"]]};
+const DECO_PX={fleur:[".a.a.","aabaa",".aba."],caillou:[".aaaa.","aaaaaa","abbbbb",".bbbb."],touffe:["a...a","a.a.a","ababa",".bbb."],os:["a.....a","aaaaaaa","a.....a"],cristal:[".a.","aab","aab","abb"]};
+const solsEnv=()=>SOLS[CARTE.env]||SOLS.prairie, decosEnv=()=>DECOS[CARTE.env]||DECOS.prairie;
+const MASK={on:false,cs:CELL,cols:0,rows:0,data:null,sol:null,bt:[],near:null};
+const maskIdx=(x,y)=>{const i=Math.floor(x/MASK.cs),j=Math.floor(y/MASK.cs); return i>=0&&j>=0&&i<MASK.cols&&j<MASK.rows?j*MASK.cols+i:-1};
+const maskSol=(x,y)=>{if(!MASK.on)return true; const k=maskIdx(x,y); return k>=0&&MASK.data[k]===1}; // sol peint (les attaques y passent, eau comprise)
+const maskWalk=k=>MASK.data[k]===1&&!MASK.bt[MASK.sol[k]];
+const maskAt=(x,y)=>{if(!MASK.on)return true; const k=maskIdx(x,y); return k>=0&&maskWalk(k)}; // sol où l'on marche
 const spType=p=>p[3]==="b"?"b":"e", spVague=p=>p[2]|0; // un point d'apparition : [x, y, vague, type]
 const carteValide=c=>!!(c&&c.depart&&Array.isArray(c.spawns)&&c.spawns.filter(p=>spType(p)==="e").length>=CARTE_MIN_SPAWNS&&Array.isArray(c.obst));
 
 // ---------- grille de forme : codage, plus proche case de sol, cadre de jeu ----------
 function zoneEnc(data,cols,rows){ const runs=[]; let cur=0,n=0; for(let i=0;i<data.length;i++){if(data[i]===cur)n++; else{runs.push(n); cur=data[i]; n=1}} runs.push(n); return {c:cols,r:rows,runs} }
 function zoneDec(z,cols,rows){ const d=new Uint8Array(cols*rows); if(!z||z.c!==cols||z.r!==rows||!Array.isArray(z.runs))return d; let p=0,v=0; for(const n of z.runs){if(v)d.fill(1,p,Math.min(d.length,p+n)); p+=n; v^=1} return d }
-function maskNear(){ // pour chaque case, la case de sol la plus proche (recherche en largeur depuis toutes les cases de sol)
+function solEnc(d){ const r=[]; let cur=d[0],n=0; for(let i=0;i<d.length;i++){if(d[i]===cur)n++; else{r.push(cur,n); cur=d[i]; n=1}} r.push(cur,n); return r.length===2&&r[0]===0?null:r } // null : tout en type 0
+function solDec(s,n){ const d=new Uint8Array(n); if(!Array.isArray(s))return d; let p=0; for(let k=0;k+1<s.length;k+=2){const v=s[k]|0; if(v>0&&v<5)d.fill(v,p,Math.min(n,p+(s[k+1]|0))); p+=s[k+1]|0} return d }
+function maskNear(){ // pour chaque case, la case de sol où l'on marche la plus proche (recherche en largeur depuis toutes ces cases)
   const n=MASK.cols*MASK.rows, near=new Int32Array(n).fill(-1), q=new Int32Array(n); let h=0,t=0;
-  for(let i=0;i<n;i++)if(MASK.data[i]===1){near[i]=i; q[t++]=i}
+  for(let i=0;i<n;i++)if(maskWalk(i)){near[i]=i; q[t++]=i}
   while(h<t){const i=q[h++], x=i%MASK.cols, y=(i/MASK.cols)|0;
     if(x>0&&near[i-1]<0){near[i-1]=near[i]; q[t++]=i-1} if(x<MASK.cols-1&&near[i+1]<0){near[i+1]=near[i]; q[t++]=i+1}
     if(y>0&&near[i-MASK.cols]<0){near[i-MASK.cols]=near[i]; q[t++]=i-MASK.cols} if(y<MASK.rows-1&&near[i+MASK.cols]<0){near[i+MASK.cols]=near[i]; q[t++]=i+MASK.cols}}
@@ -9425,12 +9447,12 @@ function maskCadre(){ // le cadre de jeu (AB) = la boîte qui entoure le sol ; l
   if(x1<0){AB.x0=0;AB.y0=0;AB.x1=WORLD.w;AB.y1=WORLD.h} else{AB.x0=x0*MASK.cs; AB.y0=y0*MASK.cs; AB.x1=(x1+1)*MASK.cs; AB.y1=(y1+1)*MASK.cs}
   AB.rad=0;
 }
-function maskBuild(cols,rows,data){ MASK.on=true; MASK.cols=cols; MASK.rows=rows; MASK.data=data; maskNear(); maskCadre() }
+function maskBuild(cols,rows,data,sol){ MASK.on=true; MASK.cols=cols; MASK.rows=rows; MASK.data=data; MASK.sol=sol||new Uint8Array(cols*rows); MASK.bt=solsEnv().map(s=>!!s.b); maskNear(); maskCadre() }
 // collisions : le moteur garde ses règles (rectangle, obstacles) ; la grille s'y ajoute
 {const _af=arenaFix; arenaFix=function(e){ _af.apply(this,arguments);
     if(MASK.on&&e.x!==undefined&&!maskAt(e.x,e.y)){const i=MASK.near[Math.max(0,Math.min(MASK.rows-1,Math.floor(e.y/MASK.cs)))*MASK.cols+Math.max(0,Math.min(MASK.cols-1,Math.floor(e.x/MASK.cs)))];
       if(i>=0){const nx=(i%MASK.cols+.5)*MASK.cs, ny=(((i/MASK.cols)|0)+.5)*MASK.cs; e.x=nx; e.y=ny}}};
-  const _as=arenaShot; arenaShot=function(o){ return _as.apply(this,arguments)||(MASK.on&&!maskAt(o.x,o.y)) };
+  const _as=arenaShot; arenaShot=function(o){ return _as.apply(this,arguments)||(MASK.on&&!maskSol(o.x,o.y)) };
   const _sa=setArena; setArena=function(){ MASK.on=false; return _sa.apply(this,arguments) }; // toute autre arène remet le rectangle habituel
 }
 
@@ -9449,11 +9471,51 @@ function texPrep(env,cb){
     const gg=mkCv(1,1).getContext("2d"); TEX[env]={fp:gg.createPattern(tile(fb),"repeat"),wp:gg.createPattern(tile(wb),"repeat")}; cb(TEX[env]);
   }; im.src=src;
 }
+const SOLPAT={};
+function solPat(t){ // motif de 32 px d'un type de sol, tiré de ses trois couleurs
+  const k=CARTE.env+t; if(SOLPAT[k])return SOLPAT[k];
+  const S=solsEnv()[t], C=S.c, c=mkCv(32,32), g=c.getContext("2d"), r=(i,s)=>Math.floor(h2(i,t*7+s,11)*28)+2, px=(x,y,w,h,col)=>{g.fillStyle=col; g.fillRect(x,y,w,h)};
+  px(0,0,32,32,C[0]); for(let i=0;i<46;i++)px(r(i,1),r(i,2),1,1,C[1]);
+  if(S.m==="brin")for(let i=0;i<9;i++){const x=r(i,3),y=r(i,4); px(x,y-2,1,3,C[2]); px(x+2,y-1,1,2,C[2])}
+  if(S.m==="grain")for(let i=0;i<12;i++)px(r(i,3),r(i,4),i%3?1:2,1,C[2]);
+  if(S.m==="vague")for(let i=0;i<4;i++){const x=Math.min(23,r(i,3)),y=r(i,4); px(x,y,2,1,C[2]); px(x+2,y-1,3,1,C[2]); px(x+5,y,2,1,C[2])}
+  if(S.m==="dalle"){px(0,0,32,1,C[2]); px(0,16,32,1,C[2]); px(0,0,1,16,C[2]); px(16,16,1,16,C[2])}
+  if(S.m==="eclat")for(let i=0;i<3;i++){const x=Math.min(24,r(i,3)),y=Math.max(8,r(i,4)); for(let q=0;q<6;q++)px(x+q,y-q,1,1,C[2])}
+  return SOLPAT[k]=g.createPattern(c,"repeat");
+}
+// types de sol : un calque par type ; le bord suit la grille lissée (interpolation entre centres de cellules), donc les coins s'arrondissent seuls.
+// Un mur compte comme « dedans » : le type va jusqu'au mur, qui est dessiné par-dessus.
+function solCouches(g,cx0,cy0,cx1,cy1){
+  const M=MASK, s=M.sol, cs=M.cs, Q=2, X=cx0*cs, Y=cy0*cs, W=(cx1-cx0)*cs, H=(cy1-cy0)*cs, w=W/Q, h=H/Q, pres=new Set();
+  for(let j=Math.max(0,cy0-1);j<Math.min(M.rows,cy1+1);j++)for(let i=Math.max(0,cx0-1);i<Math.min(M.cols,cx1+1);i++){const k=j*M.cols+i; if(s[k]&&M.data[k])pres.add(s[k])}
+  const sm=f=>f*f*(3-2*f), ux=new Float32Array(w), ix=new Int32Array(w);
+  for(let x=0;x<w;x++){const u=(X+(x+.5)*Q)/cs-.5; ix[x]=Math.floor(u); ux[x]=sm(u-ix[x])}
+  for(let t=1;t<5;t++){ if(!pres.has(t))continue;
+    const ind=(i,j)=>{i=i<0?0:i>=M.cols?M.cols-1:i; j=j<0?0:j>=M.rows?M.rows-1:j; const k=j*M.cols+i; return M.data[k]===0||s[k]===t?1:0};
+    const im=new ImageData(w,h), a=im.data;
+    for(let y=0;y<h;y++){const v=(Y+(y+.5)*Q)/cs-.5, j=Math.floor(v), fy=sm(v-j);
+      for(let x=0;x<w;x++){const i=ix[x], fx=ux[x], f=(ind(i,j)*(1-fx)+ind(i+1,j)*fx)*(1-fy)+(ind(i,j+1)*(1-fx)+ind(i+1,j+1)*fx)*fy; if(f>.5)a[(y*w+x)*4+3]=255}}
+    const m=mkCv(w,h); m.getContext("2d").putImageData(im,0,0);
+    const L=mkCv(W,H), lg=L.getContext("2d"), O=mkCv(W,H), og=O.getContext("2d"); lg.imageSmoothingEnabled=false; lg.drawImage(m,0,0,W,H);
+    og.drawImage(L,0,0); og.globalCompositeOperation="source-in"; og.fillStyle="rgba(7,12,36,.32)"; og.fillRect(0,0,W,H); // liseré sombre autour du type
+    lg.globalCompositeOperation="source-in"; lg.setTransform(1,0,0,1,-X,-Y); lg.fillStyle=solPat(t); lg.fillRect(X,Y,W,H);
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])g.drawImage(O,X+dx,Y+dy);
+    g.drawImage(L,X,Y);
+  }
+}
+function decoDessin(g,X,Y,W,H){ const L=decosEnv();
+  for(const d of CARTE.deco){ if(d[0]<X-8||d[0]>X+W+8||d[1]<Y-8||d[1]>Y+H+8)continue;
+    const D=L[d[2]]||L[0], P=DECO_PX[D[1]], w=P[0].length, h=P.length, x0=Math.round(d[0]-w/2), y0=Math.round(d[1])-h+1;
+    g.fillStyle="rgba(7,12,36,.22)"; g.fillRect(x0,y0+h,w,1);
+    for(let j=0;j<h;j++)for(let i=0;i<w;i++){const ch=P[j][i]; if(ch!=="."){g.fillStyle=ch==="a"?D[2]:D[3]; g.fillRect(x0+i,y0+j,1,1)}}}
+}
 function solRender(cx0,cy0,cx1,cy1){ // redessine une zone de cellules [cx0,cx1) x [cy0,cy1) du sol
   const cs=MASK.cs; cx0=Math.max(0,cx0); cy0=Math.max(0,cy0); cx1=Math.min(MASK.cols,cx1); cy1=Math.min(MASK.rows,cy1); if(cx1<=cx0||cy1<=cy0)return;
+  const B=64; if(cx1-cx0>B||cy1-cy0>B){for(let j=cy0;j<cy1;j+=B)for(let i=cx0;i<cx1;i+=B)solRender(i,j,Math.min(cx1,i+B),Math.min(cy1,j+B)); return} // par blocs : peu de mémoire sur les grandes cartes
   const g=ground.getContext("2d"), T=TEX[CARTE.env]||{}, X=cx0*cs,Y=cy0*cs,W=(cx1-cx0)*cs,H=(cy1-cy0)*cs, M=MASK, d=M.data, wall=(i,j)=>i<0||j<0||i>=M.cols||j>=M.rows||d[j*M.cols+i]===0;
   g.save(); g.beginPath(); g.rect(X,Y,W,H); g.clip(); g.imageSmoothingEnabled=false;
   g.fillStyle=T.fp||"#3a7a3a"; g.fillRect(X,Y,W,H);
+  if(CARTE.cal.sol&&M.sol)solCouches(g,cx0,cy0,cx1,cy1);
   g.fillStyle=T.wp||"#173a22"; for(let j=cy0;j<cy1;j++){let i=cx0; while(i<cx1){if(!wall(i,j)){i++; continue} let k=i; while(k<cx1&&wall(k,j))k++; g.fillRect(i*cs,j*cs,(k-i)*cs,cs); i=k}}
   for(let j=cy0;j<cy1;j++)for(let i=cx0;i<cx1;i++){const x=i*cs,y=j*cs;
     if(!wall(i,j)){ // ombre portée des murs sur le sol
@@ -9461,6 +9523,7 @@ function solRender(cx0,cy0,cx1,cy1){ // redessine une zone de cellules [cx0,cx1)
     } else { // arête sombre du mur contre le sol
       if(!wall(i,j-1)){g.fillStyle="rgba(0,0,0,.5)"; g.fillRect(x,y+cs-2,cs,2)} if(!wall(i-1,j)){g.fillStyle="rgba(0,0,0,.4)"; g.fillRect(x+cs-2,y,2,cs)} if(!wall(i+1,j)){g.fillStyle="rgba(0,0,0,.4)"; g.fillRect(x,y,2,cs)} if(!wall(i,j+1)){g.fillStyle="rgba(0,0,0,.5)"; g.fillRect(x,y,cs,2)}}
   }
+  if(CARTE.cal.deco)decoDessin(g,X,Y,W,H);
   g.restore();
 }
 const solTout=()=>solRender(0,0,MASK.cols,MASK.rows);
@@ -9470,20 +9533,21 @@ function carteMonde(c){ // une carte dans le monde du jeu : taille, grille de fo
   const cols=Math.ceil(w/CELL), rows=Math.ceil(h/CELL); let data;
   if(c.zone)data=zoneDec(c.zone,cols,rows);
   else{ data=new Uint8Array(cols*rows); for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){const x=(i+.5)*CELL,y=(j+.5)*CELL; if(x>=AB.x0&&x<=AB.x1&&y>=AB.y0&&y<=AB.y1)data[j*cols+i]=1}} // ancienne carte : le rectangle de l'arène
-  WORLD.w=w; WORLD.h=h; maskBuild(cols,rows,data);
+  WORLD.w=w; WORLD.h=h; maskBuild(cols,rows,data,solDec(c.sol,cols*rows));
+  CARTE.deco=(c.deco||[]).filter(d=>d[0]<w&&d[1]<h).map(d=>[d[0],d[1],d[2]|0]);
   const cv2=mkCv(w,h); ground=cv2; solTout(); texPrep(env,()=>{ if(MASK.on&&ground===cv2)solTout() });
 }
 function carteAppliquer(c){ // une carte en jeu
   if(c.zone)carteMonde(c); else{setArena(c.env||"prairie"); OBST.length=0}
   (c.obst||[]).forEach(o=>{if(OBK[o[2]])pushObst([o[0],o[1],0,o[2]])});
 }
-const carteDump=()=>({env:CARTE.env,w:WORLD.w,h:WORLD.h,zone:zoneEnc(MASK.data,MASK.cols,MASK.rows),obst:OBST.filter(o=>!o.dead).map(o=>[Math.round(o.x),Math.round(o.y),o.k]),spawns:CARTE.spawns.map(p=>[Math.round(p[0]),Math.round(p[1]),spVague(p),spType(p)]),depart:CARTE.depart?[Math.round(CARTE.depart[0]),Math.round(CARTE.depart[1])]:null});
+const carteDump=()=>({env:CARTE.env,w:WORLD.w,h:WORLD.h,zone:zoneEnc(MASK.data,MASK.cols,MASK.rows),...(solEnc(MASK.sol)?{sol:solEnc(MASK.sol)}:{}),...(CARTE.deco.length?{deco:CARTE.deco.map(d=>[Math.round(d[0]),Math.round(d[1]),d[2]])}:{}),obst:OBST.filter(o=>!o.dead).map(o=>[Math.round(o.x),Math.round(o.y),o.k]),spawns:CARTE.spawns.map(p=>[Math.round(p[0]),Math.round(p[1]),spVague(p),spType(p)]),depart:CARTE.depart?[Math.round(CARTE.depart[0]),Math.round(CARTE.depart[1])]:null});
 
 // ---------- contrôles : départ et apparitions sur le sol, chemin libre du départ jusqu'à chaque apparition ----------
 function carteVerif(){
   const E=[], nE=CARTE.spawns.filter(p=>spType(p)==="e").length, nB=CARTE.spawns.length-nE, ok={depart:!!CARTE.depart,spawns:nE,boss:nB,libre:true,sol:0};
   const S=CELL, W=MASK.cols, H=MASK.rows, blocked=new Uint8Array(W*H);
-  for(let i=0;i<W*H;i++){if(!MASK.data[i])blocked[i]=1; else ok.sol++}
+  for(let i=0;i<W*H;i++){if(!maskWalk(i))blocked[i]=1; if(MASK.data[i])ok.sol++}
   OBST.forEach(o=>{if(o.dead)return; const r=o.r+9, i0=Math.max(0,Math.floor((o.x-r)/S)), i1=Math.min(W-1,Math.floor((o.x+r)/S)), j0=Math.max(0,Math.floor((o.y-r*ISO)/S)), j1=Math.min(H-1,Math.floor((o.y+r*ISO)/S));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++)if(Math.hypot(o.x-(i+.5)*S,(o.y-(j+.5)*S)/ISO)<r)blocked[j*W+i]=1});
   if(ok.sol===0)E.push("Aucun sol : peins la forme de la carte");
@@ -9492,14 +9556,16 @@ function carteVerif(){
   if(CARTE.depart){
     const cell=p=>[Math.min(W-1,Math.max(0,Math.floor(p[0]/S))),Math.min(H-1,Math.max(0,Math.floor(p[1]/S)))], seen=new Uint8Array(W*H), [sx,sy]=cell(CARTE.depart);
     if(!MASK.data[sy*W+sx]){ok.libre=false; E.push("Le départ du joueur n'est pas sur le sol")}
+    else if(!maskWalk(sy*W+sx)){ok.libre=false; E.push("Le départ du joueur est sur un sol où l'on ne marche pas")}
     else if(blocked[sy*W+sx]){ok.libre=false; E.push("Le départ du joueur est sur un obstacle")}
     else{const q=new Int32Array(W*H); let h=0,t=0; q[t++]=sy*W+sx; seen[sy*W+sx]=1;
       while(h<t){const i=q[h++], x=i%W, y=(i/W)|0; for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy; if(nx<0||ny<0||nx>=W||ny>=H)continue; const k=ny*W+nx; if(seen[k]||blocked[k])continue; seen[k]=1; q[t++]=k}}
-      CARTE.spawns.forEach((p,i)=>{const [cx,cy]=cell(p); if(!MASK.data[cy*W+cx]){ok.libre=false; E.push("L'apparition n° "+(i+1)+" n'est pas sur le sol")} else if(!seen[cy*W+cx]){ok.libre=false; E.push("L'apparition n° "+(i+1)+" n'est pas reliée au départ (chemin bloqué)")}})}
+      CARTE.spawns.forEach((p,i)=>{const [cx,cy]=cell(p); if(!MASK.data[cy*W+cx]){ok.libre=false; E.push("L'apparition n° "+(i+1)+" n'est pas sur le sol")} else if(!maskWalk(cy*W+cx)){ok.libre=false; E.push("L'apparition n° "+(i+1)+" est sur un sol où l'on ne marche pas")} else if(!seen[cy*W+cx]){ok.libre=false; E.push("L'apparition n° "+(i+1)+" n'est pas reliée au départ (chemin bloqué)")}})}
   }
   return {...ok,erreurs:E};
 }
-const carteEnvoyer=()=>{try{const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; parent.postMessage({t:"carte",carte:carteDump(),verif:carteVerif(),sel:s?{v:spVague(s),t:spType(s)}:null,vague:CARTE.vague},"*")}catch(_){}};
+const carteEnvoyer=()=>{try{const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; parent.postMessage({t:"carte",carte:carteDump(),verif:carteVerif(),sel:s?{v:spVague(s),t:spType(s)}:null,vague:CARTE.vague,
+  noms:{sols:solsEnv().map(o=>[o.n,o.c[0],!!o.b]),decos:decosEnv().map(o=>[o[0],o[2]])}},"*")}catch(_){}};
 const carteVue=()=>{player.x=CARTE.cx; player.y=CARTE.cy};
 function carteAjuster(){ const k=Math.min(cv.width/WORLD.w,cv.height/WORLD.h)*.94; CARTE.zoom=Math.max(.1,Math.min(8,k)); PX=CARTE.zoom; CARTE.cx=WORLD.w/2; CARTE.cy=WORLD.h/2; carteVue() }
 
@@ -9510,13 +9576,13 @@ function carteDessin(){
   ctx.fillStyle="rgba(7,12,36,.16)"; for(let x=Math.ceil(x0/pas)*pas;x<=x1;x+=pas)ctx.fillRect(x,y0,1/Math.min(1,PX),y1-y0); for(let y=Math.ceil(y0/pas)*pas;y<=y1;y+=pas)ctx.fillRect(x0,y,x1-x0,1/Math.min(1,PX));
   ctx.fillStyle="rgba(255,228,94,.6)"; const ep=2/PX; ctx.fillRect(0,0,WORLD.w,ep); ctx.fillRect(0,WORLD.h-ep,WORLD.w,ep); ctx.fillRect(0,0,ep,WORLD.h); ctx.fillRect(WORLD.w-ep,0,ep,WORLD.h);
   const k=Math.max(1,1.5/PX);
-  CARTE.spawns.forEach((p,i)=>{const b=spType(p)==="b", c=b?"#ffb02e":"#ff5a4a", R=b?18:12; ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(R*k),Math.round(R*.58*k),c); ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round((R-4)*k),Math.round((R-4)*.5*k),c); ctx.fillStyle="#fff"; ctx.fillRect(Math.round(p[0])-k,Math.round(p[1])-k,3*k,3*k);
+  if(CARTE.cal.elem)CARTE.spawns.forEach((p,i)=>{const b=spType(p)==="b", c=b?"#ffb02e":"#ff5a4a", R=b?18:12; ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round(R*k),Math.round(R*.58*k),c); ellipseLine(Math.round(p[0]),Math.round(p[1]),Math.round((R-4)*k),Math.round((R-4)*.5*k),c); ctx.fillStyle="#fff"; ctx.fillRect(Math.round(p[0])-k,Math.round(p[1])-k,3*k,3*k);
     const v=spVague(p), lab=(b?"B":"")+(v===9?"F":v?String(v):""); if(lab){ctx.font="bold "+Math.round(11*k)+"px sans-serif"; ctx.textAlign="center"; ctx.fillStyle="#070c24"; ctx.fillText(lab,p[0]+1,p[1]-R*.6*k+1); ctx.fillStyle="#ffe45e"; ctx.fillText(lab,p[0],p[1]-R*.6*k)}
     if(CARTE.sel&&CARTE.sel.k==="s"&&CARTE.sel.i===i&&!CARTE.cercle){CARTE.cercle=true; const gp=CARTE.spawns.filter(q=>spVague(q)===spVague(p)&&spVague(p)>0); if(gp.length){const cx=gp.reduce((s,q)=>s+q[0],0)/gp.length, cy=gp.reduce((s,q)=>s+q[1],0)/gp.length; ctx.save(); ctx.globalAlpha=.7; ellipseLine(Math.round(cx),Math.round(cy),CARTE.rayon,Math.round(CARTE.rayon*ISO),"#ffe45e"); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(cx)-2*k,Math.round(cy)-2*k,4*k,4*k); ctx.restore()}}
     if(CARTE.sel&&CARTE.sel.k==="s"&&CARTE.sel.i===i){ctx.strokeStyle="#ffffff"; ctx.lineWidth=2/Math.min(1,PX); ctx.strokeRect(p[0]-(R+4)*k,p[1]-(R*.6+4)*k,(R+4)*2*k,(R*.6+4)*2*k)}});
-  if(CARTE.depart){const [x,y]=CARTE.depart, s=7*k; ctx.fillStyle="#070c24"; ctx.fillRect(Math.round(x)-s,Math.round(y)-s,2*s,2*s); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(x)-s+2*k,Math.round(y)-s+2*k,2*s-4*k,2*s-4*k)}
-  if(CARTE.rectA&&CARTE.hover){const a=CARTE.rectA, b=CARTE.hover; ctx.globalAlpha=.4; ctx.fillStyle=CARTE.rectA.mur?"#173a22":"#ffffff"; ctx.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); ctx.globalAlpha=1}
-  if(CARTE.hover){const [x,y]=CARTE.hover, f=["brush","wall"].includes(CARTE.tool); ctx.globalAlpha=.7; ctx.strokeStyle="#fff"; ctx.lineWidth=1/Math.min(1,PX); if(f){const r=CARTE.brush*CELL/2; ctx.strokeRect(x-r,y-r,2*r,2*r)} else ellipseLine(Math.round(x),Math.round(y),Math.round(9*k),Math.round(5*k),"#ffffff"); ctx.globalAlpha=1}
+  if(CARTE.depart&&CARTE.cal.elem){const [x,y]=CARTE.depart, s=7*k; ctx.fillStyle="#070c24"; ctx.fillRect(Math.round(x)-s,Math.round(y)-s,2*s,2*s); ctx.fillStyle="#ffe45e"; ctx.fillRect(Math.round(x)-s+2*k,Math.round(y)-s+2*k,2*s-4*k,2*s-4*k)}
+  if(CARTE.rectA&&CARTE.hover){const a=CARTE.rectA, b=CARTE.hover; ctx.globalAlpha=.4; ctx.fillStyle=a.sol?(a.mur?solsEnv()[0].c[0]:solsEnv()[CARTE.solT].c[0]):a.mur?"#173a22":"#ffffff"; ctx.fillRect(Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1])); ctx.globalAlpha=1}
+  if(CARTE.hover){const [x,y]=CARTE.hover, f=["brush","wall","sol","semer"].includes(CARTE.tool); ctx.globalAlpha=.7; ctx.strokeStyle="#fff"; ctx.lineWidth=1/Math.min(1,PX); if(f){const r=CARTE.brush*CELL/2; ctx.strokeRect(x-r,y-r,2*r,2*r)} else ellipseLine(Math.round(x),Math.round(y),Math.round(9*k),Math.round(5*k),"#ffffff"); ctx.globalAlpha=1}
   ctx.restore();
 }
 
@@ -9539,20 +9605,40 @@ function carteModeEditeur(){
   const bouger=(h,p)=>{if(h.k==="o"){OBST[h.i].x=p[0];OBST[h.i].y=p[1]} else if(h.k==="s"){CARTE.spawns[h.i][0]=p[0];CARTE.spawns[h.i][1]=p[1]} else CARTE.depart=p};
   const formeOutil=()=>["brush","rect","wall"].includes(CARTE.tool);
   // peinture de la grille : un carré de CARTE.brush cellules centré sur le point ; le sol est redessiné sur la zone touchée seulement
-  const peindre=(p,val)=>{const n=CARTE.brush, i0=Math.floor(p[0]/CELL-n/2+.5), j0=Math.floor(p[1]/CELL-n/2+.5); cellules(i0,j0,i0+n,j0+n,val)};
-  const cellules=(i0,j0,i1,j1,val)=>{i0=Math.max(0,i0); j0=Math.max(0,j0); i1=Math.min(MASK.cols,i1); j1=Math.min(MASK.rows,j1); if(i1<=i0||j1<=j0)return;
-    for(let j=j0;j<j1;j++)for(let i=i0;i<i1;i++)MASK.data[j*MASK.cols+i]=val; solRender(i0-1,j0-1,i1+1,j1+1)};
-  const ligne=(a,b,val)=>{const d=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/(CELL*.6))); for(let k=0;k<=d;k++)peindre([a[0]+(b[0]-a[0])*k/d,a[1]+(b[1]-a[1])*k/d],val)};
+  // arr : la grille de forme (MASK.data, 1 = sol) ou celle des types de sol (MASK.sol) ; un mur peint remet son type de sol à 0
+  const peindre=(p,val,arr)=>{const n=CARTE.brush, i0=Math.floor(p[0]/CELL-n/2+.5), j0=Math.floor(p[1]/CELL-n/2+.5); cellules(i0,j0,i0+n,j0+n,val,arr)};
+  const cellules=(i0,j0,i1,j1,val,arr=MASK.data)=>{i0=Math.max(0,i0); j0=Math.max(0,j0); i1=Math.min(MASK.cols,i1); j1=Math.min(MASK.rows,j1); if(i1<=i0||j1<=j0)return;
+    for(let j=j0;j<j1;j++)for(let i=i0;i<i1;i++){const k=j*MASK.cols+i; arr[k]=val; if(arr===MASK.data&&!val)MASK.sol[k]=0} solRender(i0-1,j0-1,i1+1,j1+1)};
+  const ligne=(a,b,val,arr)=>{const d=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/(CELL*.6))); for(let k=0;k<=d;k++)peindre([a[0]+(b[0]-a[0])*k/d,a[1]+(b[1]-a[1])*k/d],val,arr)};
+  // décor semé : au hasard dans le carré du pinceau, espacé selon la densité, seulement sur le sol de base (pas sur un chemin, l'eau, une apparition, le départ)
+  const loin=(x,y,q,e)=>Math.hypot(q[0]-x,q[1]-y)>=e;
+  const decoLibre=(x,y,e)=>maskAt(x,y)&&MASK.sol[maskIdx(x,y)]===0&&CARTE.deco.every(d=>loin(x,y,d,e))&&CARTE.spawns.every(s=>loin(x,y,s,16))&&(!CARTE.depart||loin(x,y,CARTE.depart,16));
+  const decoZone=(x0,y0,x1,y1)=>solRender(Math.floor(x0/CELL)-2,Math.floor(y0/CELL)-2,Math.ceil(x1/CELL)+2,Math.ceil(y1/CELL)+2);
+  const semer=(p,ote)=>{const r=Math.max(CELL,CARTE.brush*CELL/2), x0=p[0]-r, y0=p[1]-r, x1=p[0]+r, y1=p[1]+r;
+    if(ote)CARTE.deco=CARTE.deco.filter(d=>d[0]<x0||d[0]>x1||d[1]<y0||d[1]>y1);
+    else{const e=[40,24,14][CARTE.densite]||24, n=Math.max(1,Math.round(4*r*r/(e*e)));
+      for(let k=0;k<n&&CARTE.deco.length<DECO_MAX;k++){const x=Math.round(x0+Math.random()*2*r), y=Math.round(y0+Math.random()*2*r); if(decoLibre(x,y,e))CARTE.deco.push([x,y,Math.floor(Math.random()*4)])}}
+    decoZone(x0,y0,x1,y1)};
+  const tampon=(p,ote)=>{const [x,y]=p.map(Math.round);
+    if(ote){let b=-1,bd=10; CARTE.deco.forEach((d,i)=>{const q=Math.hypot(d[0]-x,d[1]-y); if(q<bd){bd=q; b=i}}); if(b<0)return; CARTE.deco.splice(b,1)}
+    else{if(!maskAt(x,y)||CARTE.deco.length>=DECO_MAX)return; CARTE.deco.push([x,y,CARTE.decoK])}
+    decoZone(x-8,y-8,x+8,y+8); carteEnvoyer()};
   const finTrait=()=>{maskNear(); maskCadre(); CARTE.stroke=false; carteEnvoyer()};
   const arret=e=>{e.stopImmediatePropagation(); e.preventDefault()};
   stage.addEventListener("pointerdown",e=>{arret(e); const pb=pos(e);
     if(e.button===1||CARTE.espace){CARTE.pan={x:e.clientX,y:e.clientY}; try{stage.setPointerCapture(e.pointerId)}catch(_){} return}
     const val=e.button===2?0:1;
+    if(CARTE.tool==="sol"||CARTE.tool==="semer"){ if(e.button!==0&&e.button!==2)return; CARTE.stroke=true; try{stage.setPointerCapture(e.pointerId)}catch(_){}
+      if(CARTE.tool==="semer"){CARTE.ote=e.button===2; semer(pb,CARTE.ote)}
+      else{const v=e.button===2?0:CARTE.solT; CARTE.val=v; if(e.shiftKey&&CARTE.last)ligne(CARTE.last,pb,v,MASK.sol); else peindre(pb,v,MASK.sol)}
+      CARTE.last=pb; return}
+    if(CARTE.tool==="solrect"){ if(e.button!==0&&e.button!==2)return; CARTE.rectA=Object.assign(pb.slice(),{mur:e.button===2,sol:true}); try{stage.setPointerCapture(e.pointerId)}catch(_){} return}
+    if(CARTE.tool==="tampon"){ if(e.button===0||e.button===2)tampon(pb,e.button===2); return}
     if(formeOutil()){
       if(e.button!==0&&e.button!==2)return;
       if(CARTE.tool==="rect"){CARTE.rectA=Object.assign(pb.slice(),{mur:e.button===2}); try{stage.setPointerCapture(e.pointerId)}catch(_){} return}
       const v=CARTE.tool==="wall"?0:val; CARTE.stroke=true; try{stage.setPointerCapture(e.pointerId)}catch(_){}
-      if(e.shiftKey&&CARTE.last)ligne(CARTE.last,pb,v); else peindre(pb,v); CARTE.last=pb; CARTE.val=v; return}
+      if(e.shiftKey&&CARTE.last)ligne(CARTE.last,pb,v,MASK.data); else peindre(pb,v,MASK.data); CARTE.last=pb; CARTE.val=v; return}
     const p=snap(pb), h=proche(p);
     if(e.button===2||CARTE.tool==="erase"){if(h){retirer(h); carteEnvoyer()} return}
     if(e.button!==0)return;
@@ -9561,13 +9647,13 @@ function carteModeEditeur(){
     if(!maskAt(p[0],p[1]))return;
     if(CARTE.tool==="spawn"||CARTE.tool==="boss"){CARTE.spawns.push([p[0],p[1],CARTE.vague,CARTE.tool==="boss"?"b":"e"])} else if(CARTE.tool==="start")CARTE.depart=p; else if(CARTE_GENRES.includes(CARTE.tool))pushObst([p[0],p[1],0,CARTE.tool]);
     carteEnvoyer()},true);
-  stage.addEventListener("pointermove",e=>{arret(e); const pb=pos(e), p=snap(pb); CARTE.hover=formeOutil()?[Math.round(pb[0]/CELL)*CELL,Math.round(pb[1]/CELL)*CELL]:p;
+  stage.addEventListener("pointermove",e=>{arret(e); const pb=pos(e), p=snap(pb); CARTE.hover=formeOutil()||["sol","solrect","semer"].includes(CARTE.tool)?[Math.round(pb[0]/CELL)*CELL,Math.round(pb[1]/CELL)*CELL]:CARTE.tool==="tampon"?pb:p;
     if(CARTE.pan){const d=cv.width/stage.getBoundingClientRect().width; CARTE.cx-=(e.clientX-CARTE.pan.x)*d/PX; CARTE.cy-=(e.clientY-CARTE.pan.y)*d/PX; CARTE.pan={x:e.clientX,y:e.clientY}; carteVue(); return}
-    if(CARTE.stroke){const v=CARTE.val; if(CARTE.last)ligne(CARTE.last,pb,v); CARTE.last=pb; return}
+    if(CARTE.stroke){ if(CARTE.tool==="semer")semer(pb,CARTE.ote); else if(CARTE.last)ligne(CARTE.last,pb,CARTE.val,CARTE.tool==="sol"?MASK.sol:MASK.data); CARTE.last=pb; return}
     if(CARTE.drag&&maskAt(p[0],p[1])){bouger(CARTE.drag,p)}},true);
   stage.addEventListener("pointerup",e=>{arret(e); const pb=pos(e);
     if(CARTE.pan){CARTE.pan=null; return}
-    if(CARTE.rectA){const a=CARTE.rectA, v=a.mur?0:1; cellules(Math.floor(Math.min(a[0],pb[0])/CELL),Math.floor(Math.min(a[1],pb[1])/CELL),Math.ceil(Math.max(a[0],pb[0])/CELL),Math.ceil(Math.max(a[1],pb[1])/CELL),v); CARTE.rectA=null; CARTE.last=pb; finTrait(); return}
+    if(CARTE.rectA){const a=CARTE.rectA, v=a.sol?(a.mur?0:CARTE.solT):a.mur?0:1; cellules(Math.floor(Math.min(a[0],pb[0])/CELL),Math.floor(Math.min(a[1],pb[1])/CELL),Math.ceil(Math.max(a[0],pb[0])/CELL),Math.ceil(Math.max(a[1],pb[1])/CELL),v,a.sol?MASK.sol:MASK.data); CARTE.rectA=null; CARTE.last=pb; finTrait(); return}
     if(CARTE.stroke){finTrait(); return}
     if(CARTE.drag){CARTE.drag=null; carteEnvoyer()}},true);
   stage.addEventListener("pointerleave",()=>{CARTE.hover=null});
@@ -9578,12 +9664,14 @@ function carteModeEditeur(){
     if(m.t==="rayon")CARTE.rayon=Math.max(40,Math.min(2000,m.v|0));
     else if(m.t==="vague"){const s=CARTE.sel&&CARTE.sel.k==="s"&&CARTE.spawns[CARTE.sel.i]; if(s){s[2]=m.v|0; carteEnvoyer()} else CARTE.vague=m.v|0}
     else if(m.t==="outil")CARTE.tool=m.v; else if(m.t==="pinceau")CARTE.brush=Math.max(1,Math.min(40,m.v|0));
+    else if(m.t==="soltype")CARTE.solT=Math.max(0,Math.min(4,m.v|0)); else if(m.t==="decotype")CARTE.decoK=Math.max(0,Math.min(3,m.v|0)); else if(m.t==="densite")CARTE.densite=Math.max(0,Math.min(2,m.v|0));
+    else if(m.t==="calques"){CARTE.cal={sol:m.v.sol!==false,deco:m.v.deco!==false,elem:m.v.elem!==false}; solTout()}
     else if(m.t==="charger")charger(m.carte||{});
     else if(m.t==="env"){const d=carteDump(); d.env=m.v; d.obst=[]; d.spawns=[]; d.depart=null; charger(d)}
     else if(m.t==="taille"){ // nouvelle taille : le contenu reste en haut à gauche
       const w=Math.max(16,Math.min(CARTE_MAX,m.w|0)), h=Math.max(16,Math.min(CARTE_MAX,m.h|0)), cols=Math.ceil(w/CELL), rows=Math.ceil(h/CELL), d=new Uint8Array(cols*rows);
-      for(let j=0;j<Math.min(rows,MASK.rows);j++)for(let i=0;i<Math.min(cols,MASK.cols);i++)d[j*cols+i]=MASK.data[j*MASK.cols+i];
-      const c=carteDump(); c.w=w; c.h=h; c.zone=zoneEnc(d,cols,rows); c.obst=c.obst.filter(o=>o[0]<w&&o[1]<h); c.spawns=c.spawns.filter(p=>p[0]<w&&p[1]<h); if(c.depart&&(c.depart[0]>=w||c.depart[1]>=h))c.depart=null; charger(c)}
+      const s=new Uint8Array(cols*rows); for(let j=0;j<Math.min(rows,MASK.rows);j++)for(let i=0;i<Math.min(cols,MASK.cols);i++){d[j*cols+i]=MASK.data[j*MASK.cols+i]; s[j*cols+i]=MASK.sol[j*MASK.cols+i]}
+      const c=carteDump(); c.w=w; c.h=h; c.zone=zoneEnc(d,cols,rows); c.sol=solEnc(s); if(c.deco)c.deco=c.deco.filter(q=>q[0]<w&&q[1]<h); c.obst=c.obst.filter(o=>o[0]<w&&o[1]<h); c.spawns=c.spawns.filter(p=>p[0]<w&&p[1]<h); if(c.depart&&(c.depart[0]>=w||c.depart[1]>=h))c.depart=null; charger(c)}
     else if(m.t==="zoom"){ if(m.v==="fit")carteAjuster(); else{CARTE.zoom=Math.max(.1,Math.min(8,CARTE.zoom*(m.v==="+"?1.25:.8))); PX=CARTE.zoom; carteVue()} }
   });
   charger({env:"prairie"}); try{parent.postMessage({t:"pret"},"*")}catch(_){}

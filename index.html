@@ -582,7 +582,7 @@ footer{color:var(--muted);font-size:.72rem;line-height:1.4}
 </div>
 <div id="menu" hidden role="dialog" aria-label="Choix de l'Ace"><div class="mbox"><h2>Sélection d'équipe</h2><div class="tabs" role="group" aria-label="Mode"><button type="button" data-tab="solo" aria-pressed="true">Solo</button><button type="button" data-tab="online" aria-pressed="false">En ligne</button></div><div id="onl" class="online" role="group" aria-label="En ligne"><div id="netRow"><button id="netCreate" type="button">Créer un salon</button><span>ou</span><input id="netCode" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false" aria-label="Code du salon"><button id="netJoin" type="button">Rejoindre</button></div><div id="netRoom" hidden><div class="lbcode">Salon <b id="netRoomCode"></b><button id="netCopy" type="button">Copier</button></div><div class="lbduo"><div class="lbslot" id="slotMe"></div><div class="lbvs">VS</div><div class="lbslot" id="slotOpp"></div></div><div class="lbbtns"><button id="netReady" type="button">Prêt</button><button id="netQuit" type="button">Quitter le salon</button></div></div><div id="netStatus" aria-live="polite"></div></div><div id="cards"></div><div id="equip"></div><div class="bar"><div class="modes" role="group" aria-label="Mode de jeu"><button type="button" data-mode="train" aria-pressed="true">Entraînement<small>mannequin d'entraînement</small></button><button type="button" data-mode="duel" aria-pressed="false">Versus<small>contre un adversaire</small></button><button type="button" data-mode="rush" aria-pressed="false">Marathon<small>Tous les Pokémon d'affilée, au chrono</small></button></div><div class="diffs" role="group" aria-label="Difficulté"><button type="button" data-diff="easy">Facile</button><button type="button" data-diff="normal" aria-pressed="true">Normal</button><button type="button" data-diff="hard">Difficile</button></div><div class="rounds" role="group" aria-label="Rounds"><span>Rounds</span><button type="button" data-r="1">1</button><button type="button" data-r="3" aria-pressed="true">3</button><button type="button" data-r="5">5</button></div><div class="foes" role="group" aria-label="Adversaire"><span>Adversaire</span><div id="foeBtns"></div></div><button id="go" type="button">Combattre</button></div></div></div>
 </div>
-<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.279 · 29/10/2026</b></footer>
+<footer>Jeu de fans non officiel et non commercial, sans lien avec Nintendo, Game Freak, Creatures ni The Pokémon Company. Pokémon et ses personnages © Nintendo / Creatures / Game Freak. Sprites : PMDCollab SpriteCollab (CC BY-NC 4.0), originaux Chunsoft. Effets sonores : Pokémon Donjon Mystère © Chunsoft / The Pokémon Company ; musique composée par l’auteur du jeu (soundfont FluidR3_GM, licence MIT). <b id="ver">v1.280 · 30/10/2026</b></footer>
 
 <script src="sons-4b5dc678d05c.js"></script>
 <script>
@@ -8773,8 +8773,8 @@ const EXP_PRICE={potion:EXP_ITEMS.potion.price,revive:EXP_ITEMS.revive.price};
 const EXP_ZONE=[ // zone 1 : ennemis par vague (ils arrivent en flot, 8 vivants au plus), ennemis de la vague finale (mini-boss ou boss + renforts), réactivité des bots (ai), niveau plancher (lv), multiplicateur d'XP (xp)
   {boss:false,waves:[8,10,12],last:2,ai:"exp1",lv:5,xp:.3,hits:1.6},
   {boss:false,waves:[10,12,15],last:3,ai:"exp1",lv:7,xp:.32,hits:1.8},
-  {boss:false,waves:[12,15,18],last:3,ai:"easy",lv:9,xp:.38,hits:2.2},
-  {boss:true,waves:[12,15],last:3,ai:"easy",lv:12,xp:.75,hits:2.6}]; // courbe visée pour le starter : ~8, ~11, ~14, ~18 après chaque combat (à mesurer en jouant)
+  {boss:false,waves:[12,15,18],last:3,ai:"exp1",lv:9,xp:.38,hits:2.2},
+  {boss:true,waves:[12,15],last:3,ai:"exp1",lv:12,xp:.75,hits:2.6}]; // courbe visée pour le starter : ~8, ~11, ~14, ~18 après chaque combat (à mesurer en jouant)
 const EXP_MAXLIVE=12, EXP_FIRST=8; // ennemis vivants en même temps (limite visée par le document) ; taille du premier groupe d'une vague
 const EXP_RECRUIT=.35;
 const slotMax=(key,lv)=>Math.round(statsAtLv(offBase(SPECIES[key]),lv).hp/HP_SCALE);
@@ -8782,7 +8782,7 @@ const lvOfXp=xp=>clamp(Math.floor(Math.cbrt(xp+.5)),1,100); // courbe « moyenne
 const movesUpTo=(key,lv)=>(EXP_DATA.niveaux[key]||[]).filter(([n,id])=>n<=lv&&SPL[id]).map(([,id])=>id);
 let R=null; // la run en cours (données de run, remises à zéro à chaque nouvelle run)
 
-const EXP_ENEMY={spd:.6,spdBoss:.8,dmg:.5,hitsBoss:{mini:9,boss:22},player:1.5}; // comme dans Pokémon Rumble : un ennemi normal tombe en 1 ou 2 coups (hits, par combat), les mini-boss et boss en beaucoup plus ; la vie se règle sur les dégâts de l'attaque de base du joueur // des vagues de petits ennemis : nombreux, peu résistants, peu dangereux un par un // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
+const EXP_ENEMY={spd:.6,spdBoss:.8,dmg:.35,dmgBoss:.5,hitsBoss:{mini:9,boss:22},player:1.5}; // comme dans Pokémon Rumble : un ennemi normal tombe en 1 ou 2 coups (hits, par combat), les mini-boss et boss en beaucoup plus ; la vie se règle sur les dégâts de l'attaque de base du joueur // des vagues de petits ennemis : nombreux, peu résistants, peu dangereux un par un // player : bonus de dégâts de l'équipe du joueur // adoucissement général des ennemis (retour du propriétaire : trop forts par rapport à nous)
 const BASE_MOVE={grass:"leafage",fire:"ember",water:"watergun"}; // capacité de base de chaque type de starter
 function expShopRoll(open){ // boutique : ouverte au départ et après chaque boss, souvent après les autres combats ; stock tiré au hasard
   return {open,stock:["potion","revive"].concat(["spotion","candy"].filter(()=>Math.random()<.75))};
@@ -9074,8 +9074,8 @@ function expSpawn(M=EXP.marks,bigKind=EXP.big,g=null){
   M.forEach(([x,y],i)=>{
     const EXPbig=bigKind, big=EXPbig&&i===0, d=pool[Math.floor(Math.random()*pool.length)], lv=clamp(base+(big?(EXPbig==="boss"?5:3):Math.round(rand(-1,1))),2,100), key=expEvolved(d.cle,lv);
     const e=makeFighter(key,clampX(x),clampY(y),true); e.side=1; e.lv=lv; e.out=false; e.big=big?EXPbig:null; e.zg=g;
-    e.dmgMul=big?1:EXP_ENEMY.dmg; e.spdMul=big?EXP_ENEMY.spdBoss:EXP_ENEMY.spd; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXPbig]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
-    const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(big)k.sort((a,b)=>(SPL[b].power||0)-(SPL[a].power||0)); // boss : ses capacités les plus fortes d'abord if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
+    e.dmgMul=big?EXP_ENEMY.dmgBoss:EXP_ENEMY.dmg; e.spdMul=big?EXP_ENEMY.spdBoss:EXP_ENEMY.spd; const probe=Math.max(1,calcDamage(player,e,SPL.tackle)); e.maxHp=Math.max(2,Math.round(probe*(big?EXP_ENEMY.hitsBoss[EXPbig]:EXP_ZONE[R.ci].hits))); e.hp=e.maxHp;
+    const k=movesUpTo(key,lv).filter(id=>SPL[id].cat!=="status"||Math.random()<.3).sort(()=>Math.random()-.5).slice(0,4); if(big)k.sort((a,b)=>(SPL[b].power||0)-(SPL[a].power||0)); /* boss : ses capacités les plus fortes d'abord */ if(!k.some(id=>SPL[id].power>0))k.splice(3,1,"tackle"); e.kit=k; // 4 capacités tirées parmi celles de son niveau, dont au moins une offensive (sinon Charge)
     e.dir=dirFromVector(player.x-e.x,player.y-e.y); e.inv=.6; ballFx(e); if(big)e.sarmor=true;
     entities.push(e); fighters.push(e); spawnFx(e,!!big); if(big)EXP.boss=e;
   });
@@ -9089,7 +9089,7 @@ function expWaveCleared(foes=EXP.waveFoes){ // XP après chaque vague (ou zone) 
       movesUpTo(m.key,m.lv).forEach(id=>{if(!m.learned.includes(id)){m.learned.push(id); if(m.kit.length<4)m.kit.push(id); ups.push(SPL[id].name)}})}});
   expSyncTo();
   pops.push({x:player.x,y:player.y-player.sp.body*2-10,t:0,txt:"+"+gained+" XP",col:"#ffe45e"});
-  shake=Math.max(shake,.12); showBanner(XT("VAGUE TERMINÉE","WAVE CLEARED"),"win");
+  shake=Math.max(shake,.12); // pas de bandeau : le compteur de vague en haut à droite suffit
   if(ups.length){rings.push({x:player.x,y:player.y,t:0,dur:.7,max:46,c:"#ffe45e"}); rings.push({x:player.x,y:player.y,t:0,dur:.5,max:30,c:"#ffffff"}); pops.push({x:player.x,y:player.y-player.sp.body*2-26,t:0,txt:XT("NIVEAU ↑","LEVEL UP"),col:"#ffe45e"}); try{sfxUI("go")}catch(_){}}
   if(ups.length)showLog(ups.join(" · "),2600);
 }
@@ -9146,7 +9146,7 @@ function expCrowdTick(dt){
   L.sort((p,q)=>p._fi-q._fi||Math.hypot(p.x-player.x,p.y-player.y)-Math.hypot(q.x-player.x,q.y-player.y));
   L.forEach((e,i)=>e.slotA=F[Math.min(F.length-1,Math.floor((i+.5)*F.length/L.length))]);
   EXP.tk=(EXP.tk||0)-.3; if(EXP.tk<=0){ // les jetons tournent toutes les ~1,6 s parmi les plus proches
-    EXP.tk=rand(1.2,2); const K=clamp(2+Math.floor(L.length/3),3,6); // plafond relevé (retour du propriétaire) : jusqu'à 6 attaquants en même temps
+    EXP.tk=rand(1.2,2); const K=clamp(1+Math.floor(L.length/4),2,4); // au plus 4 attaquants en même temps (retour du propriétaire : le contact ne doit pas être dangereux)
     L.forEach(e=>e.tok=false); L.map(e=>[e,Math.hypot(e.x-player.x,e.y-player.y)*rand(.7,1.3)]).sort((a,b)=>a[1]-b[1]).slice(0,K).forEach(([e])=>e.tok=true)}
 }
 function expCrowdSteer(e,t,dt){ // renvoie vrai si l'ennemi se déplace selon la foule
@@ -9154,7 +9154,7 @@ function expCrowdSteer(e,t,dt){ // renvoie vrai si l'ennemi se déplace selon la
   const melee=e.sp.style==="melee", r=melee?(e.tok?24:62):(e.tok?110:150);
   e.moveTarget={x:clampX(t.x+Math.cos(e.slotA)*r),y:clampY(t.y+Math.sin(e.slotA)*r*ISO)}; return true;
 }
-// sans jeton : il patiente ; avec jeton : il rougit 0,3 s (avertissement), puis attaque
+// sans jeton : il patiente ; avec jeton : il rougit 0,5 s (avertissement), puis attaque
 // boss et mini-boss (comme dans Pokémon Rumble) : schéma répétitif (3 fois la capacité principale, puis la seconde, puis la 3e quand il est blessé), jamais interrompus par un coup,
 // plus rapides à 60 % puis 30 % de leurs PV ; ils avancent droit sur le joueur et lancent leur capacité quand ils sont à portée
 function expBossGo(e){
@@ -9167,8 +9167,8 @@ function expBossGo(e){
 function expCrowdGo(e){
   if(e.big)return expBossGo(e);
   if(e.slotA===undefined)return true; if(!e.tok)return false;
-  if(e.warned){e.warned=false; return true}
-  e.warned=true; e.warn=.3; e.bot.think=.3; return false;
+  if(e.warned){e.warned=false; e.tok=false; return true} // une fois son coup lancé, il rend son jeton et repart à distance : pas d'enchaînement au contact
+  e.warned=true; e.warn=.5; e.bot.think=.5; return false;
 }
 // ---------- mode zones : une flèche mène à la zone de la vague suivante, la vague apparaît quand le joueur y arrive ----------
 const zoneRayon=()=>(EXP.carte&&EXP.carte.rayon)||160;
@@ -9198,7 +9198,7 @@ function expZonesTick(dt){
     else if(!a&&g.pending<=0&&g.bs.length&&!g.bossFait)zoneBoss(g);
     else if(!a&&g.pending<=0){
       g.done=true; expWaveCleared(g.foes); EXP.zi++;
-      if(EXP.zi>=EXP.zg.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else showLog(XT("Zone libérée : suis la flèche","Area cleared: follow the arrow"),2600)
+      if(EXP.zi>=EXP.zg.length){EXP.end="win"; EXP.endT=1.4; showBanner(XT("VICTOIRE","VICTORY"),"win")} else showLog(XT("Suis la flèche","Follow the arrow"),2600)
     }
   }
   EXP.marks=g.marks; expWaveDraw();
@@ -9227,7 +9227,7 @@ function expFightTick(dt){
   expWaveDraw();
 }
 function expWaveDraw(){
-  if(EXP.zm){const g=EXP.zg[EXP.zi], n=EXP.zg.length, a=expAlive().length+(g?g.pending:0), h=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Zone ","Area ")+Math.min(EXP.zi+1,n)+' / '+n+'</b>'+(g&&!g.trig?' · '+XT("suis la flèche","follow the arrow"):' · '+a+XT(" ennemi"+(a>1?"s":"")+" restant"+(a>1?"s":"")," enem"+(a>1?"ies":"y")+" left")); if(expWave.dataset.v!==h){expWave.dataset.v=h; expWave.innerHTML=h} expWave.hidden=!!EXP.end; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out)); return}
+  if(EXP.zm){const g=EXP.zg[EXP.zi], n=EXP.zg.length, a=expAlive().length+(g?g.pending:0), h=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.zi+1,n)+' / '+n+'</b>'+(g&&!g.trig?' · '+XT("suis la flèche","follow the arrow"):' · '+a+XT(" ennemi"+(a>1?"s":"")+" restant"+(a>1?"s":"")," enem"+(a>1?"ies":"y")+" left")); if(expWave.dataset.v!==h){expWave.dataset.v=h; expWave.innerHTML=h} expWave.hidden=!!EXP.end; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out)); return}
   const n=expAlive().length+(EXP.pending||0)+EXP.marks.length, txt=XT("Prairie · ","Meadow · ")+(EXP_ZONE[R.ci].boss?XT("Boss de zone","Zone boss"):XT("Combat ","Fight ")+(R.ci+1))+'<br><b>'+XT("Vague ","Wave ")+Math.min(EXP.wave+1,EXP.waves.length)+' / '+EXP.waves.length+'</b>'
     +(EXP.pause>0?' · '+XT("arrivée dans ","incoming in ")+Math.ceil(EXP.pause):' · '+n+XT(" ennemi"+(n>1?"s":"")+" restant"+(n>1?"s":"")," enem"+(n>1?"ies":"y")+" left"));
   if(expWave.dataset.v!==txt){expWave.dataset.v=txt; expWave.innerHTML=txt} expWave.hidden=!!EXP.end||EXP.wave>=EXP.waves.length; expWave.classList.toggle("low",!!(EXP.boss&&!EXP.boss.out));
